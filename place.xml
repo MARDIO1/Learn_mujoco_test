@@ -25,27 +25,22 @@
             <geom type="cylinder" size="0.01 13" material="mat_white"/>
         </body>
 
-        <!-- 目标基座 -->
+        <!-- 基地 -->
         <body name="target_base" pos="26 0 0.2">
-            <!-- 基座立方体 -->
+            <!-- 基地装甲板 -->
             <geom type="box" size="0.2 0.2 0.2" rgba="0.5 0.3 0.1 1"/>
 
             <!-- 倾斜目标 -->
-            <body name="target" pos="0 0 0.2" euler="15 0 0">
+            <body name="target" pos="0 0 0.2" euler="0 -15 0">
                 <geom type="box" size="0.05 0.05 0.005" rgba="0.2 0.2 0.2 1"/>
 
-                <!-- 绿色发光圆（后方0.05m，上方0.05m） -->
-                <body name="indicator" pos="0 -0.05 0.05">
+                <!-- 基地灯（后方0.05m，上方0.05m） -->
+                <body name="indicator" pos="0.15 0 0.15" euler="0 -15 0">
                     <geom type="cylinder" size="0.025 0.0025" material="mat_green"/>
                 </body>
             </body>
         </body>
 
-        <!-- 固定正交相机 -->
-        <camera name="side_cam"
-            pos="13 -30 2"
-            mode="fixed"
-            orthographic="true"
-        fovy="30"/>
+
     </worldbody>
 </mujoco>
