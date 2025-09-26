@@ -3,22 +3,22 @@
      Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
      For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
 <robot
-  name="try.SLDASM">
+  name="try2.SLDASM">
   <link
     name="base_link">
     <inertial>
       <origin
-        xyz="-0.00455355425015718 -0.0435599527701323 -0.00619543145509416"
+        xyz="0.00898237499292494 -0.0202211944093694 -0.0169011284877358"
         rpy="0 0 0" />
       <mass
-        value="0.000389416654106519" />
+        value="0.138629348190767" />
       <inertia
-        ixx="3.29445501118101E-09"
-        ixy="4.03896783473159E-25"
-        ixz="2.60411084548167E-25"
-        iyy="3.29445501118101E-09"
-        iyz="-8.3754046608655E-25"
-        izz="4.44151178822013E-09" />
+        ixx="0.000109802494769175"
+        ixy="-2.82916362507769E-08"
+        ixz="-1.68216360689931E-09"
+        iyy="0.000111319690596636"
+        iyz="-2.90943518036172E-07"
+        izz="9.93801604239398E-05" />
     </inertial>
     <visual>
       <origin
@@ -26,12 +26,12 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://try.SLDASM/meshes/base_link.STL" />
+          filename="T:\Learn_More\learn from project\mujocu\try2.SLDASM\meshes\base_link.STL" />
       </geometry>
       <material
         name="">
         <color
-          rgba="0.223529411764706 0.223529411764706 0.223529411764706 1" />
+          rgba="1 1 1 1" />
       </material>
     </visual>
     <collision>
@@ -40,7 +40,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://try.SLDASM/meshes/base_link.STL" />
+          filename="T:\Learn_More\learn from project\mujocu\try2.SLDASM\meshes\base_link.STL" />
       </geometry>
     </collision>
   </link>

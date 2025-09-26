@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mujoco model="cart_simulation">
+    <!-- 包含选项配置 -->
+    <include file="car/option.xml"/>
+    
+    <!-- 包含地面平台 -->
+    <include file="car/car_place.xml"/>
+    
+    <!-- 包含小车模型 -->
+    <include file="car/car.xml"/>
+</mujoco>
