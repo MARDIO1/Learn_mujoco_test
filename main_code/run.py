@@ -26,6 +26,7 @@ if __name__ == "__main__":
     temp_start(x)
     #持续运行
     while x.viewer.is_running():
+        print(x.data.qvel[x.joint_id['missile_main_joint']['qvel_adr']+0])
         time.sleep(0.01)
         main_step.step(x)
 

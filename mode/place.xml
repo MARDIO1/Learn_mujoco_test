@@ -19,7 +19,7 @@
 
         <!-- 起始点：红色立方体（正方形） -->
         <!-- 高度0.1m，边长0.4m -->
-        <body name="missile_shelf" pos="0 0 0.05">
+        <body name="missile_shelf" pos="0 0 -1">
             <geom type="box" size="0.2 0.2 0.05" material="mat_red"/>
         </body>
 
