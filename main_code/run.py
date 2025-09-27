@@ -8,11 +8,23 @@ import time
 import inital
 import main_step
 
+def temp_start(x):
+    angle_degrees = 30
+    angle_rad = angle_degrees * np.pi / 180.0
+    v=17
+    vz=np.sin(angle_rad)*v
+    vx=np.cos(angle_rad)*v
+    x.data.qvel[x.joint_id['missile_main_joint']['qvel_adr']+0]=vx#他妈的，搞了半天，这个API真是糖丸
+    x.data.qvel[x.joint_id['missile_main_joint']['qvel_adr']+2]=vz
+    return 0
 #如此完美的模块化设计，什么叫可读性？！什么叫可维护性？！
 if __name__ == "__main__":
     #初始化
     x=inital.inital()
-    #运行
+
+    #开局发射
+    temp_start(x)
+    #持续运行
     while x.viewer.is_running():
         time.sleep(0.01)
         main_step.step(x)

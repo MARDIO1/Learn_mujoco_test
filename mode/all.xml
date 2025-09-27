@@ -7,5 +7,5 @@
     <include file="place.xml"/>
     
     <!-- 包含飞镖模型 -->
-    <include file="plane.xml"/>
+    <include file="missile.xml"/>
 </mujoco>

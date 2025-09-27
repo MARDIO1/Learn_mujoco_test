@@ -5,9 +5,22 @@ import numpy as np
 #各项参数用来快速调整
 xml_file_path=r'..\mode\all.xml'
 
-
-
-#封装了一个类
+#乱七八糟的辅助函数
+#第一个就难绷完了，为什么新版本还把自由度数量删了，还要自己用type推断？而且为什么只有这么几种自由度？就没有2,4吗
+def get_dof_count(model, joint_id):
+    """根据关节类型返回其在qvel中的自由度数量。"""
+    joint_type = model.jnt_type[joint_id]
+    if joint_type == mujoco.mjtJoint.mjJNT_FREE:
+        return 6
+    elif joint_type == mujoco.mjtJoint.mjJNT_BALL:
+        return 3
+    elif joint_type == mujoco.mjtJoint.mjJNT_HINGE or joint_type == mujoco.mjtJoint.mjJNT_SLIDER:
+        return 1
+    else:
+        print(f"Warning: Unknown joint type {joint_type} for joint ID {joint_id}. Returning 0 DOFs.")
+        return 0
+    
+#封装了一个超级重要的类
 class Option:
     def __init__(self,path):
         #xml文件参数#一些大接口参数
@@ -17,6 +30,7 @@ class Option:
         self.viewer = None  # 修改为 self.viewer = None
         #一些自定义小接口参数
         self.body_id={}
+        self.joint_id={}
         
     #显示画面大函数
     def launch_viewer(self):
@@ -42,13 +56,32 @@ class Option:
                 self.body_id[body_name] = i  # 将名称和 ID 添加到字典中
             print(i," ",body_name)
         return 0
-
+    
+    #关节对应索引，自由度二维数组，构造函数的一部分
+    def get_all_joint_ids(self):
+        print("总共有",self.model.njnt,"个关节")
+        for i in range(self.model.njnt):  # model.njnt 是模型中 joint 的总数
+            joint_name = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_JOINT, i)  # 获取 joint 的名称，注意新版本
+            if joint_name:
+                temp_qpos_adr = self.model.jnt_qposadr[i]  
+                temp_qvel_adr = self.model.jnt_dofadr[i]  
+                temp_dof_num = get_dof_count(self.model, i) 
+                self.joint_id[joint_name] = { 
+                    "id": i,
+                    "name": joint_name,
+                    "qpos_adr": temp_qpos_adr,
+                    "qvel_adr": temp_qvel_adr,
+                    "dof_num": temp_dof_num
+                }
+            print(self.joint_id[joint_name])
+        
 def inital():
-    #加载文件，初始化各项参数
+    #加载文件，初始化
     print("母鸡卡 启动！")
     option=Option(xml_file_path)
     option.get_all_body_ids()
-    print("模型初始化 胜利！")
+    option.get_all_joint_ids()
+    print("模型和类初始化 胜利！")
     print("初始化 free camera")
     option.launch_viewer()
     print("free camera 初始化 胜利！")
