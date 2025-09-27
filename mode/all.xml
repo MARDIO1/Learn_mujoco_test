@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mujoco model="all">
+    <!-- 包含选项配置 -->
+    <include file="option.xml"/>
+    
+    <!-- 包含地面平台 -->
+    <include file="place.xml"/>
+    
+    <!-- 包含飞镖模型 -->
+    <include file="plane.xml"/>
+</mujoco>

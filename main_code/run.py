@@ -13,6 +13,6 @@ if __name__ == "__main__":
     #初始化
     x=inital.inital()
     #运行
-    main.main(x)
+    main.step(x)
 
 print("母鸡卡 结束！")

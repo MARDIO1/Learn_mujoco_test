@@ -3,7 +3,7 @@ import mujoco.viewer
 import os
 import numpy as np
 #各项参数用来快速调整
-xml_file_path=r'..\mode\place.xml'
+xml_file_path=r'..\mode\all.xml'
 
 #封装了一个类
 class Option:

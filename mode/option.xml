@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mujoco model="cart_system">
+    <option timestep="0.002" integrator="RK4" gravity="0 0 -9.81">
+    <!-- 上帝设置 -->
+    </option>
+    <!-- 视觉渲染设置 -->
+    <visual>
+        <headlight diffuse="0.6 0.7 0.7"/>
+        <rgba>0.95 0.95 0.95 1</rgba>
+    </visual>
+
+    <!-- 材质定义 -->
+    <asset>
+        <material name="ground_material" rgba="0.8 0.6 0.4 1" shininess="0.1"/>
+        <material name="cart_material" rgba="0.3 0.3 0.9 1" shininess="0.5"/>
+    </asset>
+
+    <!-- 模型统计信息 -->
+    <statistic center="0 0 0" extent="2"/>
+
+</mujoco>

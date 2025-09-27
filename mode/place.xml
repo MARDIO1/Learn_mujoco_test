@@ -1,17 +1,16 @@
-<mujoco model="dart_arena">
-    <option timestep="0.002" gravity="0 0 -9.81" integrator="implicitfast" 
-        density="1.225" viscosity="1.8e-5"/>
-    <visual>
+<mujoco model="place">
+    <!--option timestep="0.002" gravity="0 0 -9.81" integrator="implicitfast" 
+        density="1.225" viscosity="1.8e-5"/-->
+    <!--visual>
         <global realtime="1"/>
         <quality shadowsize="16384" numslices="28" offsamples="4" />
         <headlight diffuse="1 1 1" specular="0.5 0.5 0.5" active="1" />
         <rgba fog="0 1 0 1" haze="1 0 0 1"/>
-    </visual>
+    </visual-->
     <asset>
         <material name="mat_red" rgba="1 0 0 1"/>
         <material name="mat_green" rgba="0 1 0 1" emission="0.8"/>
         <material name="mat_white" rgba="1 1 1 1"/>
-        
     </asset>
 
     <worldbody>

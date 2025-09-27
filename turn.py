@@ -5,3 +5,4 @@ run(
     mjcf_path=r"T:\Learn_More\learn from project\mujocu\try2.SLDASM\urdf\try2.SLDASM.mjcf",
     copy_meshes=True,
 )
+print("转换结束")
