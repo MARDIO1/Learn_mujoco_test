@@ -1,7 +1,6 @@
 <mujoco model="plane">
 <!-- 模型统计信息 -->
     <statistic center="0 0 0" extent="2"/>
-    
     <!-- 物理世界 -->
     <worldbody>        
         <!-- 飞镖主体 -->

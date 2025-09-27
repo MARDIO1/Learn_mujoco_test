@@ -5,10 +5,10 @@ import numpy as np
 #自己的库
 import inital
 def step(x):
-    while x.viewer.is_running():
-        mujoco.mj_step(x.model, x.data)#模拟器运行
-        x.viewer.sync()#画面显示
-    return 0
+    
+    mujoco.mj_step(x.model, x.data)#模拟器运行
+    x.viewer.sync()#画面显示
+
 #逐帧计算空气动力
 '''
 注意飞行力学公式
