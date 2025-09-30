@@ -31,7 +31,7 @@ class Option:
         #一些自定义小接口参数
         self.body_id={}
         self.joint_id={}
-        
+        self.motor_id={}
     #显示画面大函数
     def launch_viewer(self):
         """启动 viewer 窗口"""
@@ -74,6 +74,16 @@ class Option:
                     "dof_num": temp_dof_num
                 }
             print(self.joint_id[joint_name])
+    
+        #id对应名字,构造函数的一部分
+    def get_all_motors_ids(self):
+        print("总共有",self.model.nu,"个motor")
+        for i in range(self.model.nu):  # model.nbody 是模型中 body 的总数
+            motor_name = self.model.id2name(mujoco.mjtObj.mjOBJ_MOTOR, i) # 获取 body 的名称，注意新版本
+            if motor_name:  # 确保 body 有名称 (有些 body 可能没有名称)
+                self.motor_id[motor_name] = i  # 将名称和 ID 添加到字典中
+            print(i," ",motor_name)
+        return 0
         
 def inital():
     #加载文件，初始化
@@ -81,6 +91,7 @@ def inital():
     option=Option(xml_file_path)
     option.get_all_body_ids()
     option.get_all_joint_ids()
+    option.get_all_motors_ids()
     print("模型和类初始化 胜利！")
     print("初始化 free camera")
     option.launch_viewer()
