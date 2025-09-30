@@ -88,15 +88,15 @@ class Option:
 def inital():
     #加载文件，初始化
     print("母鸡卡 启动！")
-    option=Option(xml_file_path)
-    option.get_all_body_ids()
-    option.get_all_joint_ids()
-    option.get_all_motors_ids()
+    x=Option(xml_file_path)
+    x.get_all_body_ids()
+    x.get_all_joint_ids()
+    x.get_all_motors_ids()
+
     print("模型和类初始化 胜利！")
-    print("初始化 free camera")
-    option.launch_viewer()
+    x.launch_viewer()
     print("free camera 初始化 胜利！")
-    return option
+    return x
 
 if __name__ == "__main__":
     pass

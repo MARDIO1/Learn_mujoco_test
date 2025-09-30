@@ -3,6 +3,19 @@ import numpy as np
 #自己的库
 import inital
 import my_math
+class Pose_data:
+    def __init__(self):
+        #通常值
+        self.yaw_pitch_woll={0,0,0}
+        self.v_global={0,0,0}
+        self.v_local={0,0,0}
+        self.a={0,0,0}
+        self.w={0,0,0}
+        #特殊值
+        self.aoa=0
+        self.β=0
+
+pose_data=Pose_data()
 def pose_get(x,body_id):
     # 获取并归一化四元数（MuJoCo顺序为[w,x,y,z]）
     q = my_math.normalize_quat(x.data.body(body_id).xquat)
@@ -24,9 +37,15 @@ def pose_get(x,body_id):
         aoa_degrees = np.degrees(aoa)
         sideslip_angle_degrees = np.degrees(sideslip_angle)
         print(aoa_degrees)
+    #赋值
     #angle_global = x.data.body(body_id).cpos.copy()
     #print(yaw_pitch_roll)
     #print(aoa)
+    pose_data.v_global=v_global
+    pose_data.v_local=v_local
+    pose_data.a=x.data.body(body_id).cacc[3:6].copy()
+    pose_data.w=w_global
+    pose_data.aoa=aoa
     return 0
 
 def step(x):
