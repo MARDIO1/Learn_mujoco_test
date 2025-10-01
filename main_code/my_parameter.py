@@ -1,0 +1,75 @@
+class MissileParameter:
+        def __init__(self):
+            #飞行器常量
+            # 飞行器结构参数 (Aircraft Structural Parameters)
+            self.S_ref = 0.0 # 参考面积 (Reference Area) - 例如：弹翼总面积
+            self.L_ref = 0.0 # 参考长度 (Reference Length) - 例如：弹体长度
+            # 惯性参数 (Inertial Parameters)
+            self.m = 0.0     # 飞行器质量 (Aircraft Mass)
+            self.Ix = 0.0    # 绕 x 轴转动惯量 (Moment of Inertia about x-axis)
+            self.Iy = 0.0    # 绕 y 轴转动惯量 (Moment of Inertia about y-axis)
+            self.Iz = 0.0    # 绕 z 轴转动惯量 (Moment of Inertia about z-axis)
+            self.Ixy = 0.0   # 惯量积 (Product of Inertia)
+            self.Iyz = 0.0   # 惯量积
+            self.Izx = 0.0   # 惯量积
+            #或者用一个惯性张量矩阵表示
+            
+            # --- 空气动力系数 (Aerodynamic Coefficients) ---
+            # 零值系数 (Zero-Value Coefficients)
+            self.CL0 = 0.0; self.CD0 = 0.0; self.CY0 = 0.0
+            self.Cm0 = 0.0; self.Cl0 = 0.0; self.Cn0 = 0.0
+            # 迎角相关系数 (Angle of Attack Coefficients)
+            self.CL_alpha = 0.0; self.CD_alpha = 0.0; self.CY_alpha = 0.0
+            self.Cm_alpha = 0.0; self.Cl_alpha = 0.0; self.Cn_alpha = 0.0
+            # 侧滑角相关系数 (Sideslip Angle Coefficients)
+            self.CL_beta = 0.0; self.CD_beta = 0.0; self.CY_beta = 0.0
+            self.Cm_beta = 0.0; self.Cl_beta = 0.0; self.Cn_beta = 0.0
+            # 角速度相关系数 (Angular Velocity Coefficients)
+            # 俯仰角速度 q
+            self.CL_q = 0.0; self.CD_q = 0.0; self.CY_q = 0.0
+            self.Cm_q = 0.0; self.Cl_q = 0.0; self.Cn_q = 0.0
+            # 滚转角速度 p
+            self.CL_p = 0.0; self.CD_p = 0.0; self.CY_p = 0.0
+            self.Cm_p = 0.0; self.Cl_p = 0.0; self.Cn_p = 0.0
+            # 偏航角速度 r
+            self.CL_r = 0.0; self.CD_r = 0.0; self.CY_r = 0.0
+            self.Cm_r = 0.0; self.Cl_r = 0.0; self.Cn_r = 0.0
+            # 迎角变化率相关系数 (Rate of Change of Angle of Attack Coefficients)
+            self.Cm_alphadot = 0.0
+
+            #对应舵面如果没有就要设为0
+            # 舵面偏转相关系数 (Control Surface Deflection Coefficients)
+            # 升降舵/配平舵 de
+            self.CL_de = 0.0; self.CD_de = 0.0; self.CY_de = 0.0
+            self.Cm_de = 0.0; self.Cl_de = 0.0; self.Cn_de = 0.0
+            # 副翼/副翼舵 da
+            self.CL_da = 0.0; self.CD_da = 0.0; self.CY_da = 0.0
+            self.Cm_da = 0.0; self.Cl_da = 0.0; self.Cn_da = 0.0
+            # 方向舵/尾舵 dr
+            self.CL_dr = 0.0; self.CD_dr = 0.0; self.CY_dr = 0.0
+            self.Cm_dr = 0.0; self.Cl_dr = 0.0; self.Cn_dr = 0.0
+
+#位姿参数
+class Pose_data:
+    def __init__(self):
+        #通常值
+        self.yaw_pitch_roll_rad={0,0,0}
+        self.yaw_pitch_roll_d={0,0,0}
+        self.v_global_mps={0,0,0}
+        self.v_local_mps={0,0,0}
+        self.a_global_mps2={0,0,0}
+        self.w_local_radps={0,0,0}
+        #特殊值
+        self.aoa_rad=0
+        self.soa_rad=0
+        self.aoa_degree=0
+        self.soa_degree=0
+
+        self.last_aoa_rad=0
+        self.last_soa_rad=0
+        self.aoadot_radps=0#差点忘记他了
+        self.soadot_radps=0
+        #可直接控制值
+        
+if __name__ == "__main__":
+    pass

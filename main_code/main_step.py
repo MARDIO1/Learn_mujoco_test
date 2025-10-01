@@ -1,27 +1,27 @@
 import mujoco
 import numpy as np
+import math
 #自己的库
 import inital
 import my_math
-class Pose_data:
-    def __init__(self):
-        #通常值
-        self.yaw_pitch_woll={0,0,0}
-        self.v_global={0,0,0}
-        self.v_local={0,0,0}
-        self.a={0,0,0}
-        self.w={0,0,0}
-        #特殊值
-        self.aoa=0
-        self.β=0
+import my_parameter 
 
-pose_data=Pose_data()
+pose_data=my_parameter.Pose_data()
+missile_parameter = my_parameter.MissileParameter()
+
 def pose_get(x,body_id):
+    ''''''
+    # 初始化 aoa_degrees 和 sideslip_angle_degrees，确保它们总有值
+    aoa_degrees = 0.0
+    sideslip_angle_degrees = 0.0
+    aoa = 0.0
+    sideslip_angle = 0.0
+
     # 获取并归一化四元数（MuJoCo顺序为[w,x,y,z]）
     q = my_math.normalize_quat(x.data.body(body_id).xquat)
     yaw_pitch_roll=my_math.get_euler_angles(q)
     # 全局速度→体坐标系速度 
-    w_global = x.data.body(body_id).cvel[0:3].copy()#1-3是体坐标系角速度
+    w_local = x.data.body(body_id).cvel[0:3].copy()#1-3是体坐标系角速度
     v_global = x.data.body(body_id).cvel[3:6].copy()#3-6是线速度
     v_local = my_math.quat_rotate_vector(q, v_global)
     
@@ -37,22 +37,23 @@ def pose_get(x,body_id):
         aoa_degrees = np.degrees(aoa)
         sideslip_angle_degrees = np.degrees(sideslip_angle)
         print(aoa_degrees)
-    #赋值
-    #angle_global = x.data.body(body_id).cpos.copy()
-    #print(yaw_pitch_roll)
-    #print(aoa)
-    pose_data.v_global=v_global
-    pose_data.v_local=v_local
-    pose_data.a=x.data.body(body_id).cacc[3:6].copy()
-    pose_data.w=w_global
-    pose_data.aoa=aoa
-    return 0
 
-def step(x):
-    body_id = x.model.body("missile").id
-    pose_get(x,body_id)
-    mujoco.mj_step(x.model, x.data)#模拟器运行
-    x.viewer.sync()#画面显示
+    pose_data.v_global_mps=v_global
+    pose_data.v_local_mps=v_local
+    pose_data.a_global_mps2=x.data.body(body_id).cacc[3:6].copy()
+    pose_data.w_local_radps=w_local
+    pose_data.aoa_rad=aoa
+    pose_data.aoa_degree=aoa_degrees
+    pose_data.soa_rad=sideslip_angle
+    pose_data.soa_degree=sideslip_angle_degrees
+    pose_data.yaw_pitch_roll_d=yaw_pitch_roll
+    
+    dt = x.model.opt.timestep # 获取时间步长
+    pose_data.aoadot_radps=(pose_data.aoa_rad-pose_data.last_aoa_rad)/dt
+    pose_data.soadot_radps=(pose_data.soa_rad-pose_data.last_soa_rad)/dt
+    pose_data.last_aoa_rad=pose_data.aoa_rad
+    pose_data.last_soa_rad=pose_data.soa_rad
+    return 0
 
 #逐帧计算空气动力
 '''
@@ -61,16 +62,148 @@ def step(x):
 F=ma
 旋转运动：
 M=Ib
+
+动力学公式：
+F_lip=
+F_slide=
+F_gravity=mg
+F_drag=
+
+各个方向力矩
+
 '''
 
-def air_power_step(x):
-    return 0
-# qvel 数组排列规则针对 freejoint:
-# data.qvel[qvel_start_index]        -> 线性速度 vx
-# data.qvel[qvel_start_index + 1]    -> 线性速度 vy
-# data.qvel[qvel_start_index + 2]    -> 线性速度 vz
-# data.qvel[qvel_start_index + 3]    -> 角速度 wx (绕body局部x轴)
-# data.qvel[qvel_start_index + 4]    -> 角速度 wy (绕body局部y轴)
-# data.qvel[qvel_start_index + 5]    -> 角速度 wz (绕body局部z轴)
+def air_power_step(pose_data: my_parameter.Pose_data, missile_parameter: my_parameter.MissileParameter):
+    """
+    计算导弹在空气动力作用下的力和力矩。
+
+    Args:
+        pose_data (Pose_data): 包含当前姿态和速度信息的对象。
+        missile_parameter (MissileParameter): 包含导弹气动参数的对象。
+
+    Returns:
+        tuple: 包含两部分：
+            - list: 本体参考系下的空气动力向量 [Fx, Fy, Fz] (单位: N)。
+            - list: 本体参考系下的空气力矩向量 [Mx, My, Mz] (单位: Nm)。
+    """
+    rho = 1.225 # 空气密度，单位 kg/m^3
+    # 从 pose_data 对象中解包局部速度和角速度
+    vx_local, vy_local, vz_local = pose_data.v_local_mps
+    wx_local, wy_local, wz_local = pose_data.w_local_radps # p, q, r
+
+    # 使用 Pose_data 对象中的迎角和侧滑角
+    alpha = pose_data.aoa_rad
+    beta = pose_data.soa_rad # 假设你的 Pose_data 类中有 beta_rad 属性
+
+    # 舵面偏转值 (假设为0，需要从控制系统获取)
+    # 如果你的 Pose_data 类中包含舵面偏转值，可以从那里获取
+    # 例如：delta_e = pose_data.delta_e
+    delta_e = 0.0 
+    delta_a = 0.0
+    delta_r = 0.0
+
+    # 从 missile_parameter 对象中获取参考面积和参考长度
+    S_ref = missile_parameter.S_ref
+    L_ref = missile_parameter.L_ref
+
+    # 空速计算
+    V_squared = vx_local**2 + vy_local**2 + vz_local**2
+    if V_squared == 0:
+        # 如果速度为零，则没有空气动力
+        return [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]
+    V = math.sqrt(V_squared)
+    
+    # 升力系数 CL
+    # 检查 alpha 和 beta 的单位是否与系数定义一致（通常是弧度）
+    CL = (missile_parameter.CL0 + missile_parameter.CL_alpha * alpha + missile_parameter.CL_beta * beta +
+          missile_parameter.CL_q * (wy_local * L_ref / (2 * V)) + # q -> wy_local
+          missile_parameter.CL_p * (wx_local * L_ref / (2 * V)) + # p -> wx_local
+          missile_parameter.CL_r * (wz_local * L_ref / (2 * V)) + # r -> wz_local
+          missile_parameter.CL_de * delta_e + missile_parameter.CL_da * delta_a + missile_parameter.CL_dr * delta_r)
+
+    # 阻力系数 CD
+    CD = (missile_parameter.CD0 + missile_parameter.CD_alpha * alpha + missile_parameter.CD_beta * beta +
+          missile_parameter.CD_q * (wy_local * L_ref / (2 * V)) +
+          missile_parameter.CD_p * (wx_local * L_ref / (2 * V)) +
+          missile_parameter.CD_r * (wz_local * L_ref / (2 * V)) +
+          missile_parameter.CD_de * delta_e + missile_parameter.CD_da * delta_a + missile_parameter.CD_dr * delta_r)
+
+    # 侧向力系数 CY
+    CY = (missile_parameter.CY0 + missile_parameter.CY_alpha * alpha + missile_parameter.CY_beta * beta +
+          missile_parameter.CY_q * (wy_local * L_ref / (2 * V)) +
+          missile_parameter.CY_p * (wx_local * L_ref / (2 * V)) +
+          missile_parameter.CY_r * (wz_local * L_ref / (2 * V)) +
+          missile_parameter.CY_de * delta_e + missile_parameter.CY_da * delta_a + missile_parameter.CY_dr * delta_r)
+
+    # 俯仰力矩系数 Cm
+    Cm = (missile_parameter.Cm0 + missile_parameter.Cm_alpha * alpha + missile_parameter.Cm_beta * beta +
+          missile_parameter.Cm_q * (wy_local * L_ref / (2 * V)) +
+          missile_parameter.Cm_alphadot * (pose_data.aoadot_radps * L_ref / (2 * V)) +
+          missile_parameter.Cm_de * delta_e + missile_parameter.Cm_da * delta_a + missile_parameter.Cm_dr * delta_r)
+
+    # 滚转力矩系数 Cl
+    Cl = (missile_parameter.Cl0 + missile_parameter.Cl_alpha * alpha + missile_parameter.Cl_beta * beta +
+          missile_parameter.Cl_p * (wx_local * L_ref / (2 * V)) +
+          missile_parameter.Cl_r * (wz_local * L_ref / (2 * V)) +
+          missile_parameter.Cl_de * delta_e + missile_parameter.Cl_da * delta_a + missile_parameter.Cl_dr * delta_r)
+
+    # 偏航力矩系数 Cn
+    Cn = (missile_parameter.Cn0 + missile_parameter.Cn_alpha * alpha + missile_parameter.Cn_beta * beta +
+          missile_parameter.Cn_p * (wx_local * L_ref / (2 * V)) +
+          missile_parameter.Cn_r * (wz_local * L_ref / (2 * V)) +
+          missile_parameter.Cn_de * delta_e + missile_parameter.Cn_da * delta_a + missile_parameter.Cn_dr * delta_r)
+
+    # 计算力和力矩 (单位: N, Nm)
+    # 力
+    D = 0.5 * rho * V_squared * S_ref * CD
+    Y = 0.5 * rho * V_squared * S_ref * CY
+    L = 0.5 * rho * V_squared * S_ref * CL
+    
+    # 力矩
+    M = 0.5 * rho * V_squared * S_ref * L_ref * Cm      # 俯仰力矩
+    Roll_Moment = 0.5 * rho * V_squared * S_ref * L_ref * Cl # 滚转力矩
+    N = 0.5 * rho * V_squared * S_ref * L_ref * Cn      # 偏航力矩
+    
+    # 本体参考系下的力向量
+    # 坐标系定义: 
+    # x轴: 指向导弹前方
+    # y轴: 指向导弹右侧
+    # z轴: 指向导弹上方
+    #
+    # 阻力 D: 沿 -vx_local 方向 (与前进方向相反)
+    # 侧向力 Y: 沿 +vy_local 方向 (右侧) 呃呃，怎么变成左手系了
+    # 升力 L: 沿 +vz_local 方向 (向上) 
+    # 
+    # 因此，本体参考系下的力分量为:
+    # Fx = -D
+    # Fy = Y
+    # Fz = L
+    aeroforces_body = [-D, Y, L]
+    # 本体参考系下的力矩向量
+    # 坐标系定义:
+    # 绕 x轴 (Roll): 滚转力矩 L (通常右手螺旋，正向为右滚)
+    # 绕 y轴 (Pitch): 俯仰力矩 M (通常右手螺旋，正向为俯)
+    # 绕 z轴 (Yaw):   偏航力矩 N (通常右手螺旋，正向为右偏)
+    # 
+    # 现代惯导系统中，角速度通常是 p, q, r
+    # p: 绕 x 轴的角速度 (滚转)
+    # q: 绕 y 轴的角速度 (俯仰)
+    # r: 绕 z 轴的角速度 (偏航)
+    #
+    # 对应的力矩系数 Cl, Cm, Cn 通常对应于绕 x, y, z 轴的力矩。
+    # 因此，本体参考系下的力矩分量为:
+    # Mx = Roll_Moment (对应 Cl)
+    # My = M (对应 Cm)
+    # Mz = N (对应 Cn)
+    aeromoments_body = [Roll_Moment, M, N]
+    return aeroforces_body, aeromoments_body
+
+def step(x):
+    body_id = x.model.body("missile").id
+    pose_get(x,body_id)
+    air_power_step(pose_data,missile_parameter)
+    mujoco.mj_step(x.model, x.data)#模拟器运行
+    x.viewer.sync()#画面显示
+
 if __name__ == "__main__":
     pass
