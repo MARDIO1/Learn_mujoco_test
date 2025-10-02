@@ -14,7 +14,9 @@ def temp_start(x):
     v=17
     vz=np.sin(angle_rad)*v
     vx=np.cos(angle_rad)*v
+    vy=0
     x.data.qvel[x.joint_id['missile_main_joint']['qvel_adr']+0]=vx#他妈的，搞了半天，这个API真是糖丸
+    x.data.qvel[x.joint_id['missile_main_joint']['qvel_adr']+1]=vy
     x.data.qvel[x.joint_id['missile_main_joint']['qvel_adr']+2]=vz
     return 0
 

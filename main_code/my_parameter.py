@@ -34,8 +34,6 @@ class MissileParameter:
             # 偏航角速度 r
             self.CL_r = 0.0; self.CD_r = 0.0; self.CY_r = 0.0
             self.Cm_r = 0.0; self.Cl_r = 0.0; self.Cn_r = 0.0
-            # 迎角变化率相关系数 (Rate of Change of Angle of Attack Coefficients)
-            self.Cm_alphadot = 0.0
 
             #对应舵面如果没有就要设为0
             # 舵面偏转相关系数 (Control Surface Deflection Coefficients)
@@ -54,11 +52,11 @@ class Pose_data:
     def __init__(self):
         #通常值
         self.yaw_pitch_roll_rad=[0.0,0.0,0.0]
-        self.yaw_pitch_roll_d=[0.0,0.0,0.0]
-        self.v_global_mps=[0.0,0.0,0.0]
-        self.v_local_mps=[0.0,0.0,0.0]
-        self.a_global_mps2=[0.0,0.0,0.0]
-        self.w_local_radps=[0.0,0.0,0.0]
+        self.yaw_pitch_roll_d  =[0.0,0.0,0.0]
+        self.v_global_mps      =[0.0,0.0,0.0]
+        self.v_local_mps       =[0.0,0.0,0.0]
+        self.a_global_mps2     =[0.0,0.0,0.0]
+        self.w_local_radps     =[0.0,0.0,0.0]
         #特殊值
         self.aoa_rad=0
         self.soa_rad=0
