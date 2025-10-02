@@ -86,6 +86,7 @@ class MissileParameter:
 class Pose_data:
     def __init__(self):
         #通常值
+        self.q_wb=[1.0,0.0,0.0,0.0]#获取的四元数
         self.yaw_pitch_roll_rad=[0.0,0.0,0.0]
         self.yaw_pitch_roll_d=[0.0,0.0,0.0]
 
@@ -135,11 +136,14 @@ class Power_data:
         # Fy = Y
         # Fz = L
         self.F_wind=[0.0,0.0,0.0]
+        self.F_local=[0.0,0.0,0.0]
+        self.F_global=[0.0,0.0,0.0]
         # 坐标系定义:
         # 绕 x轴 (Roll): 滚转力矩 L (通常右手螺旋，正向为右滚)
         # 绕 y轴 (Pitch): 俯仰力矩 M (通常右手螺旋，正向为俯)
         # 绕 z轴 (Yaw):   偏航力矩 N (通常右手螺旋，正向为右偏)
-        self.M=[0.0,0.0,0.0]
+        self.M_local=[0.0,0.0,0.0]
+        self.M_global=[0.0,0.0,0.0]
 
 if __name__ == "__main__":
     pass

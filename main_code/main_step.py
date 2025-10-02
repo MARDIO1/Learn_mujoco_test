@@ -35,8 +35,8 @@ def pose_get(x,body_id):
     w_local = x.data.body(body_id).cvel[0:3].copy()#1-3是体坐标系角速度
     v_local = x.data.body(body_id).cvel[3:6].copy()#3-6是线速度
     #v_local = my_math.quat_rotate_vector(q, v_global)
-    velocity_magnitude = np.linalg.norm(v_local) # 计算速度向量的模
-    if velocity_magnitude < 0.5:
+    pose_data.w_wind = np.linalg.norm(v_local) # 计算速度向量的模
+    if pose_data.w_wind < 0.5:
         aoa = 0.0  # 或 np.nan，取决于你的需求
         sideslip_angle = 0.0 # 或 np.nan
     else:
@@ -47,7 +47,8 @@ def pose_get(x,body_id):
         sideslip_angle_degrees = np.degrees(sideslip_angle)
         #print(aoa_degrees)
 
-    #pose_data.v_global_mps=v_global
+    #pose_data.v_global_mps=
+    pose_data.q_wb=q
     pose_data.v_local_mps=v_local
     pose_data.a_local_mps2=x.data.body(body_id).cacc[3:6].copy()
     pose_data.b_local_radps2=x.data.body(body_id).cacc[0:3].copy()
@@ -172,45 +173,26 @@ def air_power_cal_step():
     Roll_Moment = 0.5 * rho * V_squared * S_ref * L_ref * Cl # 滚转力矩
     N = 0.5 * rho * V_squared * S_ref * L_ref * Cn      # 偏航力矩
     
-    # 本体参考系下的力向量
-    # 坐标系定义: 
-    # x轴: 指向导弹前方
-    # y轴: 指向导弹右侧
-    # z轴: 指向导弹上方
-    #
-    # 阻力 D: 沿 -vx_local 方向 (与前进方向相反)
-    # 侧向力 Y: 沿 +vy_local 方向 (右侧) 呃呃，怎么变成左手系了
-    # 升力 L: 沿 +vz_local 方向 (向上) 
-    # 
-    # 因此，本体参考系下的力分量为:
-    # Fx = -D
-    # Fy = Y
-    # Fz = L
-    aeroforces_body = [-D, Y, L]
-    power_data.F=aeroforces_body
-    # 本体参考系下的力矩向量
-    # 坐标系定义:
-    # 绕 x轴 (Roll): 滚转力矩 L (通常右手螺旋，正向为右滚)
-    # 绕 y轴 (Pitch): 俯仰力矩 M (通常右手螺旋，正向为俯)
-    # 绕 z轴 (Yaw):   偏航力矩 N (通常右手螺旋，正向为右偏)
-    # 
-    # 现代惯导系统中，角速度通常是 p, q, r
-    # p: 绕 x 轴的角速度 (滚转)
-    # q: 绕 y 轴的角速度 (俯仰)
-    # r: 绕 z 轴的角速度 (偏航)
-    #
-    # 对应的力矩系数 Cl, Cm, Cn 通常对应于绕 x, y, z 轴的力矩。
-    # 因此，本体参考系下的力矩分量为:
-    # Mx = Roll_Moment (对应 Cl)
-    # My = M (对应 Cm)
-    # Mz = N (对应 Cn)
-    aeromoments_body = [Roll_Moment, M, N]
-    power_data.M=aeromoments_body
+    #风轴系中构造力（Xw沿气流方向：阻力D为正；Yw侧向；Zw升力）
+    F_wind = np.array([D, Y, L], dtype=np.float64)
+
+    #用弹体系速度定义风轴，得到风->体旋转矩阵
+    v_body = np.array([vx_local, vy_local, vz_local], dtype=np.float64)
+    R_bw, _ = my_math._wind_axes_in_body(v_body) # 风轴系到弹体系的旋转矩阵
+
+    #力：风轴 -> 弹体；力矩：直接在弹体系（教材约定）
+    power_data.F_local = R_bw @ F_wind
+    power_data.M_local = np.array([Roll_Moment, M, N], dtype=np.float64)
+
+    #转化为世界系力/力矩
+    F_world = my_math.body_to_world(power_data.F_local, q_wb=pose_data.q_wb)
+    power_data.F_global = F_world.tolist()
+    power_data.M_global = my_math.body_to_world(power_data.M_local, q_wb=pose_data.q_wb)
     return 0
 
 def air_power_use_step(x,body_id):
-    force_in_body_frame = np.array(power_data.F, dtype=np.float64)
-    torque_in_body_frame = np.array(power_data.M, dtype=np.float64)
+    force_in_body_frame = np.array(power_data.F_global, dtype=np.float64)
+    torque_in_body_frame = np.array(power_data.M_global, dtype=np.float64)
     print(f"在 body {body_id} 的体坐标系下施加力: {force_in_body_frame}")
     print(f"在 body {body_id} 的体坐标系下施加力矩: {torque_in_body_frame}")
     # 施加力和力矩
@@ -258,7 +240,7 @@ def step(x):
     debug_step(x,body_id)
     #body_acc6_at_com(x.model, x.data, body_id)
     #debug_acc(x.model, x.data, body_id)
-    #air_power_use_step(x,body_id)
+    air_power_use_step(x,body_id)
     mujoco.mj_step(x.model, x.data)#模拟器运行
     x.viewer.sync()#画面显示
 
