@@ -1,0 +1,16 @@
+<mujoco>
+  <option gravity="0 0 -9.81" timestep="0.001"/>
+  <worldbody>
+    <body name="missile" pos="0 0 0.4">
+      <freejoint/>
+      <geom type="box" size="0.2 0.1 0.05" density="1000"/>
+      <!-- 质心 site -->
+      <site name="missile_com" pos="0 0 0" size="0.01" rgba="0 1 0 1"/>
+    </body>
+  </worldbody>
+
+  <sensor>
+    <accelerometer name="acc_com" site="missile_com"/>
+    <gyro          name="gyro_com" site="missile_com"/>
+  </sensor>
+</mujoco>

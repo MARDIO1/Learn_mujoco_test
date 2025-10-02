@@ -16,8 +16,12 @@
 
             <!-- 飞镖关节 - 水平运动自由度 -->
             <joint name="missile_main_joint" type="free"/>
-
+            <site name="IMU_site" pos="0 0 0" size="0.01" rgba="0 1 0 1"/>
         </body>
         
     </worldbody>
+    <sensor>
+        <accelerometer site="IMU_site"/>
+        <gyro          site="IMU_site"/>
+    </sensor>
 </mujoco>

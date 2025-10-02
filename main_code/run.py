@@ -27,8 +27,11 @@ if __name__ == "__main__":
     #开局发射
     temp_start(x)
     #持续运行
+    time_stamp=0
     while x.viewer.is_running():
-        #print(x.data.qvel[x.joint_id['missile_main_joint']['qvel_adr']+0])
         time.sleep(0.01)
+        time_stamp+=1
+        #if time_stamp<1000:
+        #    x.data.xfrc_applied[6, 2] = 10.0  # 1 N
         main_step.step(x)
 print("母鸡卡 结束！")

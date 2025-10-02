@@ -10,7 +10,18 @@ pose_data=my_parameter.Pose_data()
 missile_parameter = my_parameter.MissileParameter()
 power_data=my_parameter.Power_data()
 def pose_get(x,body_id):
-    ''''''
+    '''void mj_objectAcceleration(const mjModel* m, const mjData* d,
+                           int objtype, int objid, mjtNum res[6], int flg_local);'''
+    a_res = np.zeros(6, dtype=np.float64)
+    mujoco.mj_objectAcceleration(
+        x.model,  # 模型
+        x.data,   # 数据
+        mujoco.mjtObj.mjOBJ_BODY,  # 对象类型为BODY
+        body_id,  # 身体ID
+        a_res,      # 结果存储数组
+        1         # flg_local设为1，表示使用局部坐标系
+    )
+    print("a_res",a_res)
     # 初始化 aoa_degrees 和 sideslip_angle_degrees，确保它们总有值
     aoa_degrees = 0.0
     sideslip_angle_degrees = 0.0
@@ -36,11 +47,13 @@ def pose_get(x,body_id):
         sideslip_angle = np.arctan2(v_local[1], v_local[0])
         aoa_degrees = np.degrees(aoa)
         sideslip_angle_degrees = np.degrees(sideslip_angle)
-        print(aoa_degrees)
+        #print(aoa_degrees)
 
     pose_data.v_global_mps=v_global
     pose_data.v_local_mps=v_local
-    pose_data.a_global_mps2=x.data.body(body_id).cacc[3:6].copy()
+    pose_data.a_global_mps2=x.data.body(body_id).cacc[0:3].copy()
+    pose_data.b_global_radps2=x.data.body(body_id).cacc[3:3].copy()
+
     pose_data.w_local_radps=w_local
     pose_data.aoa_rad=aoa
     pose_data.aoa_degree=aoa_degrees
@@ -206,18 +219,47 @@ def air_power_use_step(x,body_id):
     #mujoco.apply_body_force_torque(x.model, x.data, body_id, force_in_body_frame, torque_in_body_frame)
     mujoco.mj_applyFT(
     x.model,
-    x.data,
-    force_in_body_frame,  # 力的大小
-    torque_in_body_frame,  # 扭矩
+    x.data ,
+    force_in_body_frame  ,  # 力的大小
+    torque_in_body_frame ,  # 扭矩
     x.data.xipos[body_id],  # 应用力的位置，这个参数是什么？
     body_id,  # 物体ID
     x.data.qfrc_applied,  # 应用力的数组，这个参数是什么？
     )
+
+def debug_step(x,body_id):
+    # 每个body的空间加速度：[angacc(3), linacc(3)]，均在世界系
+    cacc = x.data.cacc.reshape(-1, 6)
+
+    angacc_world = cacc[body_id, 0:3]
+    linacc_world = cacc[body_id, 3:6]   # 这就是“包含重力”的世界线加速度 a_w
+
+    ares = np.zeros(6, dtype=np.float64)
+    mujoco.mj_objectAcceleration(x.model, x.data, mujoco.mjtObj.mjOBJ_BODY, body_id, ares,0)
+    angacc_world = ares[0:3]
+    linacc_world = ares[3:6]  # 含重力
+    print(f"body {body_id} 的世界线加速度: {linacc_world}")
+    print(f"body {body_id} 的世界角加速度: {angacc_world}")
+
+def body_acc6_at_com(m, d, body_id, local=False):
+    # 确保 cacc 已刷新（你的环境里建议加这一句）
+    mujoco.mj_rnePostConstraint(m, d)
+
+    res = np.zeros(6, dtype=np.float64)
+    flg_local = 1 if local else 0  # 0=world, 1=local
+    mujoco.mj_objectAcceleration(m, d, mujoco.mjtObj.mjOBJ_BODY, body_id, res,1)
+    angacc = res[:3].copy()
+    linacc = res[3:].copy()
+    return angacc, linacc
+
 def step(x):
     body_id = x.model.body("missile").id
     pose_get(x,body_id)
     air_power_cal_step()
-    air_power_use_step(x,body_id)
+    debug_step(x,body_id)
+    body_acc6_at_com(x.model, x.data, body_id)
+    #debug_acc(x.model, x.data, body_id)
+    #air_power_use_step(x,body_id)
     mujoco.mj_step(x.model, x.data)#模拟器运行
     x.viewer.sync()#画面显示
 

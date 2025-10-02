@@ -25,7 +25,7 @@
 
         <!-- 指示线（水平白线） -->
         <body name="direction_line"
-            pos="13 0 0.05"
+            pos="13 0 -0.5"
             euler="0 90 0">   <!-- 绕Y轴旋转90°，圆柱水平沿X -->
             <geom type="cylinder" size="0.01 13" material="mat_white"/>
         </body>
