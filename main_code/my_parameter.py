@@ -53,12 +53,12 @@ class MissileParameter:
 class Pose_data:
     def __init__(self):
         #通常值
-        self.yaw_pitch_roll_rad={0,0,0}
-        self.yaw_pitch_roll_d={0,0,0}
-        self.v_global_mps={0,0,0}
-        self.v_local_mps={0,0,0}
-        self.a_global_mps2={0,0,0}
-        self.w_local_radps={0,0,0}
+        self.yaw_pitch_roll_rad=[0.0,0.0,0.0]
+        self.yaw_pitch_roll_d=[0.0,0.0,0.0]
+        self.v_global_mps=[0.0,0.0,0.0]
+        self.v_local_mps=[0.0,0.0,0.0]
+        self.a_global_mps2=[0.0,0.0,0.0]
+        self.w_local_radps=[0.0,0.0,0.0]
         #特殊值
         self.aoa_rad=0
         self.soa_rad=0
@@ -70,6 +70,20 @@ class Pose_data:
         self.aoadot_radps=0#差点忘记他了
         self.soadot_radps=0
         #可直接控制值
-        
+        self.duo_y_rad=0
+        self.duo_z_rad=0
+class Power_data:
+     def __init__(self):
+        # 因此，本体参考系下的力分量为:
+        # Fx = -D
+        # Fy = Y
+        # Fz = L
+        self.F=[0.0,0.0,0.0]
+        # 坐标系定义:
+        # 绕 x轴 (Roll): 滚转力矩 L (通常右手螺旋，正向为右滚)
+        # 绕 y轴 (Pitch): 俯仰力矩 M (通常右手螺旋，正向为俯)
+        # 绕 z轴 (Yaw):   偏航力矩 N (通常右手螺旋，正向为右偏)
+        self.M=[0.0,0.0,0.0]
+
 if __name__ == "__main__":
     pass

@@ -4,7 +4,7 @@
     <!-- 物理世界 -->
     <worldbody>        
         <!-- 飞镖主体 -->
-        <body name="missile" pos="0 0 0.3" quat="1 0 0 0">
+        <body name="missile" pos="0 0 0.4" quat="1 0 0 0">
             
             <!-- 飞镖主体几何体 - 方块 -->
             <geom name="cart_body" 

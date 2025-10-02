@@ -8,7 +8,7 @@ import my_parameter
 
 pose_data=my_parameter.Pose_data()
 missile_parameter = my_parameter.MissileParameter()
-
+power_data=my_parameter.Power_data()
 def pose_get(x,body_id):
     ''''''
     # 初始化 aoa_degrees 和 sideslip_angle_degrees，确保它们总有值
@@ -73,7 +73,7 @@ F_drag=
 
 '''
 
-def air_power_step(pose_data: my_parameter.Pose_data, missile_parameter: my_parameter.MissileParameter):
+def air_power_cal_step():
     """
     计算导弹在空气动力作用下的力和力矩。
 
@@ -93,13 +93,11 @@ def air_power_step(pose_data: my_parameter.Pose_data, missile_parameter: my_para
 
     # 使用 Pose_data 对象中的迎角和侧滑角
     alpha = pose_data.aoa_rad
-    beta = pose_data.soa_rad # 假设你的 Pose_data 类中有 beta_rad 属性
+    beta = pose_data.soa_rad 
 
     # 舵面偏转值 (假设为0，需要从控制系统获取)
-    # 如果你的 Pose_data 类中包含舵面偏转值，可以从那里获取
-    # 例如：delta_e = pose_data.delta_e
-    delta_e = 0.0 
-    delta_a = 0.0
+    delta_e =pose_data.duo_y_rad
+    delta_a =pose_data.duo_z_rad
     delta_r = 0.0
 
     # 从 missile_parameter 对象中获取参考面积和参考长度
@@ -109,7 +107,6 @@ def air_power_step(pose_data: my_parameter.Pose_data, missile_parameter: my_para
     # 空速计算
     V_squared = vx_local**2 + vy_local**2 + vz_local**2
     if V_squared == 0:
-        # 如果速度为零，则没有空气动力
         return [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]
     V = math.sqrt(V_squared)
     
@@ -179,6 +176,7 @@ def air_power_step(pose_data: my_parameter.Pose_data, missile_parameter: my_para
     # Fy = Y
     # Fz = L
     aeroforces_body = [-D, Y, L]
+    power_data.F=aeroforces_body
     # 本体参考系下的力矩向量
     # 坐标系定义:
     # 绕 x轴 (Roll): 滚转力矩 L (通常右手螺旋，正向为右滚)
@@ -196,12 +194,30 @@ def air_power_step(pose_data: my_parameter.Pose_data, missile_parameter: my_para
     # My = M (对应 Cm)
     # Mz = N (对应 Cn)
     aeromoments_body = [Roll_Moment, M, N]
-    return aeroforces_body, aeromoments_body
+    power_data.M=aeromoments_body
+    return 0
 
+def air_power_use_step(x,body_id):
+    force_in_body_frame = np.array(power_data.F, dtype=np.float64)
+    torque_in_body_frame = np.array(power_data.M, dtype=np.float64)
+    print(f"在 body {body_id} 的体坐标系下施加力: {force_in_body_frame}")
+    print(f"在 body {body_id} 的体坐标系下施加力矩: {torque_in_body_frame}")
+    # 施加力和力矩
+    #mujoco.apply_body_force_torque(x.model, x.data, body_id, force_in_body_frame, torque_in_body_frame)
+    mujoco.mj_applyFT(
+    x.model,
+    x.data,
+    force_in_body_frame,  # 力的大小
+    torque_in_body_frame,  # 扭矩
+    x.data.xipos[body_id],  # 应用力的位置，这个参数是什么？
+    body_id,  # 物体ID
+    x.data.qfrc_applied,  # 应用力的数组，这个参数是什么？
+    )
 def step(x):
     body_id = x.model.body("missile").id
     pose_get(x,body_id)
-    air_power_step(pose_data,missile_parameter)
+    air_power_cal_step()
+    air_power_use_step(x,body_id)
     mujoco.mj_step(x.model, x.data)#模拟器运行
     x.viewer.sync()#画面显示
 
