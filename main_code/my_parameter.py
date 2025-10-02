@@ -89,13 +89,16 @@ class Pose_data:
         self.yaw_pitch_roll_rad=[0.0,0.0,0.0]
         self.yaw_pitch_roll_d=[0.0,0.0,0.0]
 
+        self.v_wind=0.0
         self.v_global_mps=[0.0,0.0,0.0]
         self.v_local_mps=[0.0,0.0,0.0]
         self.a_local_mps2=[0.0,0.0,0.0]
 
+        self.w_wind=[0.0,0.0,0.0]
         self.w_local_radps=[0.0,0.0,0.0]
         self.w_global_radps=[0.0,0.0,0.0]
-        self.b_local_mps2=[0.0,0.0,0.0]
+        self.w_wind=[0.0,0.0,0.0]
+        self.b_local_radps2=[0.0,0.0,0.0]
         #特殊值
         self.aoa_rad=0
         self.soa_rad=0
@@ -109,6 +112,7 @@ class Pose_data:
         #可直接控制值
         self.duo_y_rad=0
         self.duo_z_rad=0
+
     def print_debug_info(self):
         #print(f"yaw_pitch_roll_rad: {self.yaw_pitch_roll_rad}")
         print(f"yaw_pitch_roll_d: {self.yaw_pitch_roll_d}")
@@ -130,7 +134,7 @@ class Power_data:
         # Fx = -D
         # Fy = Y
         # Fz = L
-        self.F=[0.0,0.0,0.0]
+        self.F_wind=[0.0,0.0,0.0]
         # 坐标系定义:
         # 绕 x轴 (Roll): 滚转力矩 L (通常右手螺旋，正向为右滚)
         # 绕 y轴 (Pitch): 俯仰力矩 M (通常右手螺旋，正向为俯)

@@ -19,9 +19,9 @@ def pose_get(x,body_id):
         mujoco.mjtObj.mjOBJ_BODY,  # 对象类型为BODY
         body_id,  # 身体ID
         a_res,      # 结果存储数组
-        1         # flg_local设为1，表示使用局部坐标系
+        0        # flg_local设为1，表示使用局部坐标系
     )
-    print("a_res",a_res)
+    '''print("a_res",a_res)'''
     # 初始化 aoa_degrees 和 sideslip_angle_degrees，确保它们总有值
     aoa_degrees = 0.0
     sideslip_angle_degrees = 0.0
@@ -33,11 +33,9 @@ def pose_get(x,body_id):
     yaw_pitch_roll=my_math.get_euler_angles(q)
     # 全局速度→体坐标系速度 
     w_local = x.data.body(body_id).cvel[0:3].copy()#1-3是体坐标系角速度
-    v_global = x.data.body(body_id).cvel[3:6].copy()#3-6是线速度
-    v_local = my_math.quat_rotate_vector(q, v_global)
-    
+    v_local = x.data.body(body_id).cvel[3:6].copy()#3-6是线速度
+    #v_local = my_math.quat_rotate_vector(q, v_global)
     velocity_magnitude = np.linalg.norm(v_local) # 计算速度向量的模
-
     if velocity_magnitude < 0.5:
         aoa = 0.0  # 或 np.nan，取决于你的需求
         sideslip_angle = 0.0 # 或 np.nan
@@ -49,10 +47,10 @@ def pose_get(x,body_id):
         sideslip_angle_degrees = np.degrees(sideslip_angle)
         #print(aoa_degrees)
 
-    pose_data.v_global_mps=v_global
+    #pose_data.v_global_mps=v_global
     pose_data.v_local_mps=v_local
-    pose_data.a_global_mps2=x.data.body(body_id).cacc[0:3].copy()
-    pose_data.b_global_radps2=x.data.body(body_id).cacc[3:3].copy()
+    pose_data.a_local_mps2=x.data.body(body_id).cacc[3:6].copy()
+    pose_data.b_local_radps2=x.data.body(body_id).cacc[0:3].copy()
 
     pose_data.w_local_radps=w_local
     pose_data.aoa_rad=aoa
@@ -228,7 +226,7 @@ def air_power_use_step(x,body_id):
     )
 
 def debug_step(x,body_id):
-    # 每个body的空间加速度：[angacc(3), linacc(3)]，均在世界系
+    '''# 每个body的空间加速度：[angacc(3), linacc(3)]，均在世界系
     cacc = x.data.cacc.reshape(-1, 6)
 
     angacc_world = cacc[body_id, 0:3]
@@ -239,7 +237,8 @@ def debug_step(x,body_id):
     angacc_world = ares[0:3]
     linacc_world = ares[3:6]  # 含重力
     print(f"body {body_id} 的世界线加速度: {linacc_world}")
-    print(f"body {body_id} 的世界角加速度: {angacc_world}")
+    print(f"body {body_id} 的世界角加速度: {angacc_world}")'''
+    #看看哪个力不对劲
 
 def body_acc6_at_com(m, d, body_id, local=False):
     # 确保 cacc 已刷新（你的环境里建议加这一句）
@@ -257,7 +256,7 @@ def step(x):
     pose_get(x,body_id)
     air_power_cal_step()
     debug_step(x,body_id)
-    body_acc6_at_com(x.model, x.data, body_id)
+    #body_acc6_at_com(x.model, x.data, body_id)
     #debug_acc(x.model, x.data, body_id)
     #air_power_use_step(x,body_id)
     mujoco.mj_step(x.model, x.data)#模拟器运行
