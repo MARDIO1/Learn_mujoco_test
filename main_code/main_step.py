@@ -180,21 +180,20 @@ def air_power_cal_step():
     v_body = np.array([vx_local, vy_local, vz_local], dtype=np.float64)
     R_bw, _ = my_math._wind_axes_in_body(v_body) # 风轴系到弹体系的旋转矩阵
 
-    #力：风轴 -> 弹体；力矩：直接在弹体系（教材约定）
+    #转化为世界系力
     power_data.F_local = R_bw @ F_wind
-    power_data.M_local = np.array([Roll_Moment, M, N], dtype=np.float64)
-
-    #转化为世界系力/力矩
     F_world = my_math.body_to_world(power_data.F_local, q_wb=pose_data.q_wb)
     power_data.F_global = F_world.tolist()
+    #转化为世界系力矩
+    power_data.M_local = np.array([Roll_Moment, M, N], dtype=np.float64)
     power_data.M_global = my_math.body_to_world(power_data.M_local, q_wb=pose_data.q_wb)
     return 0
 
 def air_power_use_step(x,body_id):
     force_in_body_frame = np.array(power_data.F_global, dtype=np.float64)
     torque_in_body_frame = np.array(power_data.M_global, dtype=np.float64)
-    print(f"在 body {body_id} 的体坐标系下施加力: {force_in_body_frame}")
-    print(f"在 body {body_id} 的体坐标系下施加力矩: {torque_in_body_frame}")
+    print(f"在 body {body_id} 的世界坐标系下施加力: {force_in_body_frame}")
+    print(f"在 body {body_id} 的世界坐标系下施加力矩: {torque_in_body_frame}")
     # 施加力和力矩
     #mujoco.apply_body_force_torque(x.model, x.data, body_id, force_in_body_frame, torque_in_body_frame)
     mujoco.mj_applyFT(
@@ -202,9 +201,9 @@ def air_power_use_step(x,body_id):
     x.data ,
     force_in_body_frame  ,  # 力的大小
     torque_in_body_frame ,  # 扭矩
-    x.data.xipos[body_id],  # 应用力的位置，这个参数是什么？
+    x.data.xipos[body_id],  # 应用力的位置，这个参数是什么？代表joint？还是质心？
     body_id,  # 物体ID
-    x.data.qfrc_applied,  # 应用力的数组，这个参数是什么？
+    x.data.qfrc_applied,  # 应用力的数组，这个参数是什么？额外力？
     )
 
 def debug_step(x,body_id):
