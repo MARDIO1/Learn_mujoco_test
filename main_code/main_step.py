@@ -32,11 +32,18 @@ def pose_get(x,body_id):
     # 获取并归一化四元数（MuJoCo顺序为[w,x,y,z]）
     q = my_math.normalize_quat(x.data.body(body_id).xquat)
     yaw_pitch_roll=my_math.get_euler_angles(q)
-    # 全局速度→体坐标系速度 
+    # 获取Body的质心线速度（世界坐标系对齐）
+    v_global = x.data.body(body_id).cvel[3:6].copy()
+    # 获取从世界到body局部坐标系的旋转矩阵，怎么感觉不对啊啊啊啊
+    R_world_to_body = x.data.body(body_id).xmat.reshape(3, 3)
+    # 全局速度获取
     w_local = x.data.body(body_id).cvel[0:3].copy()#1-3是体坐标系角速度
-    v_local = x.data.body(body_id).cvel[3:6].copy()#3-6是线速度
+    v_global = x.data.body(body_id).cvel[3:6].copy()#3-6是世界线速度 呜呜呜，唐没变了呜呜呜呜呜呜呜呜呜
+    # 将世界坐标系下的速度转换到Body局部坐标系下
+    v_local = v_global @ R_world_to_body 
+
     #v_local = my_math.quat_rotate_vector(q, v_global)
-    pose_data.v_wind_mps = np.linalg.norm(v_local) # 计算速度向量的模
+    pose_data.v_wind_mps = np.linalg.norm(v_global) # 计算速度向量的模
     if pose_data.v_wind_mps < 0.5:
         aoa = 0.0  # 或 np.nan，取决于你的需求
         sideslip_angle = 0.0 # 或 np.nan
@@ -46,17 +53,26 @@ def pose_get(x,body_id):
         sideslip_angle = np.arctan2(v_local[1], v_local[0])
         aoa_degrees = np.degrees(aoa)
         sideslip_angle_degrees = np.degrees(sideslip_angle)
-        #print(aoa_degrees)
+        
 
     #构造风轴系,用弹体系速度定义风轴，得到风->体旋转矩阵
     v_body = np.array(pose_data.v_local_mps, dtype=np.float64)
     R_bw, _ = my_math._wind_axes_in_body(v_body) # 风轴系到弹体系的旋转矩阵
 
+    print(v_local)
+    '''已经验证，正确完了给你
+    [ 0.8660254 -0.        -0.5      ]
+    [ 0.         1.        -0.       ]
+    [ 0.5        0.         0.8660254]
+    '''
+
     pose_data.R_wind_to_local = R_bw
+    pose_data.R_local_to_global=R_world_to_body
     pose_data.q_wind_to_global=my_math.q_wind_to_world(q, v_body)
     #pose_data.v_global_mps=
     pose_data.q_local_to_global=q #mujoco提取姿态矩阵 世界->弹体
     pose_data.v_local_mps=v_local
+    pose_data.v_global_mps=v_global
     pose_data.a_local_mps2=x.data.body(body_id).cacc[3:6].copy()
     pose_data.b_local_radps2=x.data.body(body_id).cacc[0:3].copy()
 
@@ -121,25 +137,15 @@ def air_power_cal_step():
           missile_parameter.CL_de * delta_e + missile_parameter.CL_da * delta_a + missile_parameter.CL_dr * delta_r)
 
     # 阻力系数 CD
-    '''CD = (missile_parameter.CD0 + missile_parameter.CD_alpha * alpha + missile_parameter.CD_beta * beta +
+    CD = (missile_parameter.CD0 + missile_parameter.CD_alpha * alpha + missile_parameter.CD_beta * beta +
           missile_parameter.CD_q * (wy_local * L_ref / (2 * V)) +
           missile_parameter.CD_p * (wx_local * L_ref / (2 * V)) +
           missile_parameter.CD_r * (wz_local * L_ref / (2 * V)) +
           missile_parameter.CD_de * delta_e + missile_parameter.CD_da * delta_a + missile_parameter.CD_dr * delta_r)
-    '''
+    
     # 计算CD各项贡献（便于定位）
     
-    CD0 = missile_parameter.CD0
-    CD_a = missile_parameter.CD_alpha * alpha
-    CD_b = missile_parameter.CD_beta  * beta
-    # 如需：CD_pq r 舵偏等分开打印
-    CD_raw = CD0 + CD_a + CD_b
-    # 可逐步恢复以下项，先注释调试
-    # CD_raw += missile_parameter.CD_q * (wy_local * L_ref / (2 * V))
-    # CD_raw += missile_parameter.CD_p * (wx_local * L_ref / (2 * V))
-    # CD_raw += missile_parameter.CD_r * (wz_local * L_ref / (2 * V))
-    # CD_raw += missile_parameter.CD_de * delta_e + missile_parameter.CD_da * delta_a + missile_parameter.CD_dr * delta_r
-    CD = max(1e-6, CD_raw)  # 确保非负
+    CD = max(1e-6, CD)  # 确保非负
 
     # 侧向力系数 CY
     CY = (missile_parameter.CY0 + missile_parameter.CY_alpha * alpha + missile_parameter.CY_beta * beta +
@@ -178,7 +184,7 @@ def air_power_cal_step():
     N = 0.5 * rho * V_squared * S_ref * L_ref * Cn      # 偏航力矩
     
     #风轴系中构造力（Xw沿气流方向：阻力D为正；Yw侧向；Zw升力）
-    F_wind = np.array([D, 0, 0], dtype=np.float64)
+    F_wind = np.array([0,0, 0], dtype=np.float64)
     power_data.F_wind=F_wind
 
     #风->体->世界 最终转化为世界系
@@ -191,7 +197,7 @@ def air_power_cal_step():
     power_data.M_global = my_math.body_to_world(power_data.M_local, q_wb=pose_data.q_local_to_global)
     power_data.M_global=[0,0,0]
 
-    print(F_wind)
+    
     #print(f"V={V:.3f}, CD={CD:.4f}, D={D:.2f}, v_body={v_body}, F_body={power_data.F_local}, dot={np.dot(power_data.F_local, v_body):.3e}")
     if pose_data.v_wind_mps<1:#低速风轴乱动最唐解决方案，更唐的是，这还没解决的了
         power_data.M_global=[0,0,0]
@@ -201,10 +207,9 @@ def air_power_cal_step():
 def air_power_use_step(x,body_id):
     force_in_body_frame = np.array(power_data.F_global, dtype=np.float64)
     torque_in_body_frame = np.array(power_data.M_global, dtype=np.float64)
-    print(f"在 body {body_id} 的世界坐标系下施加力: {force_in_body_frame}")
-    print(f"在 body {body_id} 的世界坐标系下施加力矩: {torque_in_body_frame}")
-    # 施加力和力矩
-    #mujoco.apply_body_force_torque(x.model, x.data, body_id, force_in_body_frame, torque_in_body_frame)
+    #print(f"在 body {body_id} 的世界坐标系下施加力: {force_in_body_frame}")
+    #print(f"在 body {body_id} 的世界坐标系下施加力矩: {torque_in_body_frame}")
+
     mujoco.mj_applyFT(
     x.model,
     x.data ,
@@ -214,94 +219,17 @@ def air_power_use_step(x,body_id):
     body_id,  # 物体ID
     x.data.qfrc_applied,  # 应用力的数组，这个参数是什么？额外力？
     )
-def _normalize(v, eps=1e-12):
-    n = np.linalg.norm(v)
-    return v if n < eps else v / n
-def check_wind_frame(R_bw, q_body_to_world_wxyz, v_body, q_wind_to_world_wxyz, verbose=True):
-    ok = True
-    msgs = []
 
-    # 0) 形状检查
-    if R_bw.shape != (3,3):
-        ok = False; msgs.append(f"R_bw shape invalid: {R_bw.shape}, expect (3,3)")
-        if verbose:
-            print("\n".join(msgs))
-        return ok
-
-    # 1) 正交性
-    orth_err = np.linalg.norm(R_bw.T @ R_bw - np.eye(3))
-    if orth_err > 1e-6:
-        ok = False; msgs.append(f"[X] R_bw not orthonormal, orth_err={orth_err:.2e}")
-    else:
-        msgs.append(f"[✓] R_bw orthonormal, orth_err={orth_err:.2e}")
-
-    # 2) 体->世
-    R_body_to_world = R.from_quat(np.roll(q_body_to_world_wxyz, -1)).as_matrix()  # wxyz -> xyzw
-
-    # 3) 由矩阵链推得 风->世
-    R_wind_to_world_by_mat = R_body_to_world @ R_bw
-
-    # 4) 由四元数给的 风->世
-    R_wind_to_world_by_quat = R.from_quat(np.roll(q_wind_to_world_wxyz, -1)).as_matrix()
-
-    # 5) 两者一致性
-    mat_diff = np.linalg.norm(R_wind_to_world_by_mat - R_wind_to_world_by_quat)
-    if mat_diff > 1e-5:
-        ok = False; msgs.append(f"[X] R_wind_to_world mismatch between matrix and quat, diff={mat_diff:.2e}")
-    else:
-        msgs.append(f"[✓] R_wind_to_world consistent, diff={mat_diff:.2e}")
-
-    # 6) 三轴正交与右手性
-    ex, ey, ez = R_bw[:,0], R_bw[:,1], R_bw[:,2]  # 风轴在体轴下的列向量
-    right_hand = np.linalg.norm(np.cross(ex, ey) - ez)
-    col_orth = np.linalg.norm(np.array([ex@ey, ex@ez, ey@ez]))
-    if right_hand > 1e-6 or col_orth > 1e-6:
-        ok = False; msgs.append(f"[X] Columns not right-handed orthonormal: right_err={right_hand:.2e}, col_orth={col_orth:.2e}")
-    else:
-        msgs.append(f"[✓] Right-handed orthonormal cols")
-
-    # 7) Xw 物理方向校验：应沿来流（-v）
-    v_world = R_body_to_world @ v_body
-    vhat_w = _normalize(v_world)
-    ex_world = R_wind_to_world_by_mat[:,0]
-    cosang = float(np.clip(ex_world @ (-vhat_w), -1.0, 1.0)) if np.linalg.norm(v_world)>1e-9 else np.nan
-    if np.isnan(cosang):
-        msgs.append("[•] |v|≈0: low-speed, skip Xw alignment check")
-    else:
-        if cosang < 0.995:  # 约< ~6°
-            ok = False; msgs.append(f"[X] Xw not aligned with -v_world: cos={cosang:.3f}")
-        else:
-            msgs.append(f"[✓] Xw aligned with -v_world: cos={cosang:.3f}")
-
-    # 8) 打印风轴在世界系方向
-    ex_w = R_wind_to_world_by_mat[:,0]
-    ey_w = R_wind_to_world_by_mat[:,1]
-    ez_w = R_wind_to_world_by_mat[:,2]
-    msgs.append(f"ex_w={ex_w.round(6)} ey_w={ey_w.round(6)} ez_w={ez_w.round(6)}")
-
-    if verbose:
-        print("\n".join(msgs))
-    return ok
-'''
 osc = debug.Oscilloscope(
-    titles=["aoa", "soa", "D"],
+    titles=["aoa", "F_wind", "F_wind"],
     colors=["C0", "C1", "C2"],
     time_window=10.0,  # 最近5秒滚动
     ylabel="degree"
     )
 def debug_step(x,body_id,time_stamp):
     #osc.push(time_stamp*x.model.opt.timestep, [pose_data.aoa_degree, pose_data.soa_degree, power_data.F_wind[0]])
-    osc.push(time_stamp*x.model.opt.timestep, [power_data.F_wind[0], power_data.F_wind[1], power_data.F_wind[2]])
+    osc.push(time_stamp*x.model.opt.timestep, [pose_data.aoa_degree, power_data.F_wind[1], power_data.F_wind[2]])
     osc.update()  # 非阻塞刷新
-'''
-def debug_step(x,body_id,time_stamp):
-    ok = check_wind_frame(
-    R_bw=pose_data.R_wind_to_local,                 # 你的 R_bw
-    q_body_to_world_wxyz=x.data.xquat[body_id],     # MuJoCo 四元数
-    v_body=pose_data.v_local_mps,                                  # 体轴速度
-    q_wind_to_world_wxyz=pose_data.q_wind_to_global # 你的函数输出
-)
-    return 0
 
 def step(x,time_stamp):
     body_id = x.model.body("missile").id

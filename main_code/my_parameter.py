@@ -54,10 +54,10 @@ class MissileParameter:
             self.CL0 = 0.0; self.CD0 = 0.1; self.CY0 = 0.0
             self.Cm0 = 0.0; self.Cl0 = 0.0; self.Cn0 = 0.0
             # 迎角相关系数 (Angle of Attack Coefficients)
-            self.CL_alpha = 3.0; self.CD_alpha = 0.5; self.CY_alpha = 0.2
+            self.CL_alpha = 1.0; self.CD_alpha = 0.1; self.CY_alpha = 0.2
             self.Cm_alpha = -1.0; self.Cl_alpha = 0.0; self.Cn_alpha = 0.0
             # 侧滑角相关系数 (Sideslip Angle Coefficients)
-            self.CL_beta = -0.1; self.CD_beta = 0.2; self.CY_beta = 2.0
+            self.CL_beta = -0.1; self.CD_beta = 0.1; self.CY_beta = 2.0
             self.Cm_beta = 0.0; self.Cl_beta = 0.0; self.Cn_beta = -1.5
             # 角速度相关系数 (Angular Velocity Coefficients)
             # 俯仰角速度 q
@@ -91,6 +91,7 @@ class Pose_data:
         self.q_wind_to_global=None
         self.R_local_to_wind=None
         self.R_wind_to_local=None
+        self.R_local_to_global=None
 
         self.yaw_pitch_roll_rad=[0.0,0.0,0.0]
         self.yaw_pitch_roll_d=[0.0,0.0,0.0]

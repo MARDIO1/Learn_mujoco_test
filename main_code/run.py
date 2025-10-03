@@ -9,6 +9,7 @@ import inital
 import main_step
 
 def temp_start(x):
+   
     angle_degrees = 30
     angle_rad = angle_degrees * np.pi / 180.0
     v=17
@@ -19,7 +20,6 @@ def temp_start(x):
     x.data.qvel[x.joint_id['missile_main_joint']['qvel_adr']+1]=vy
     x.data.qvel[x.joint_id['missile_main_joint']['qvel_adr']+2]=vz
     return 0
-
 
 #如此完美的模块化设计，什么叫可读性？！什么叫可维护性？！
 if __name__ == "__main__":
