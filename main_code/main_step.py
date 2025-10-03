@@ -59,11 +59,16 @@ def pose_get(x,body_id):
     v_body = np.array(pose_data.v_local_mps, dtype=np.float64)
     R_bw, _ = my_math._wind_axes_in_body(v_body) # 风轴系到弹体系的旋转矩阵
 
-    print(v_local)
-    '''已经验证，正确完了给你
+    #print(v_local)
+    print(pose_data.R_wind_to_local)
+    '''v_local已经验证，正确完了给你
     [ 0.8660254 -0.        -0.5      ]
     [ 0.         1.        -0.       ]
     [ 0.5        0.         0.8660254]
+    风轴系好像也正确
+    [[-0.9999995   0.          0.00100007]
+    [-0.         -1.          0.        ]
+    [ 0.00100007  0.          0.9999995 ]]
     '''
 
     pose_data.R_wind_to_local = R_bw
@@ -184,7 +189,7 @@ def air_power_cal_step():
     N = 0.5 * rho * V_squared * S_ref * L_ref * Cn      # 偏航力矩
     
     #风轴系中构造力（Xw沿气流方向：阻力D为正；Yw侧向；Zw升力）
-    F_wind = np.array([0,0, 0], dtype=np.float64)
+    F_wind = np.array([D,0,0], dtype=np.float64)
     power_data.F_wind=F_wind
 
     #风->体->世界 最终转化为世界系
