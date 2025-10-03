@@ -104,30 +104,3 @@ class Oscilloscope:
     def close(self):
         plt.ioff()
         plt.close(self.fig)
-
-import numpy as np
-import mujoco
-from scipy.spatial.transform import Rotation as R
-# 假设 x.viewer 是官方 viewer
-# q_to_world: [w,x,y,z]
-# p_world: (3,)
-def draw_axes_marker_viewer(viewer, q_to_world, p_world, scale=0.3):
-    import numpy as np
-    from scipy.spatial.transform import Rotation as R
-
-    q_xyzw = np.roll(np.asarray(q_to_world, dtype=np.float64), -1)
-    Rm = R.from_quat(q_xyzw).as_matrix()
-    axes = [Rm[:,0], Rm[:,1], Rm[:,2]]
-    colors = [
-        (1.0, 0.2, 0.2, 0.9),
-        (0.2, 1.0, 0.2, 0.9),
-        (0.2, 0.4, 1.0, 0.9),
-    ]
-    for a, rgba in zip(axes, colors):
-        viewer.add_marker(
-            pos=np.asarray(p_world, dtype=np.float32),
-            size=(0.006, 0.012, 0.0),      # 半径、锥长
-            rgba=rgba,
-            type=mujoco.mjtGeom.mjGEOM_ARROW,
-            dir=np.asarray(a*scale, dtype=np.float32),
-        )

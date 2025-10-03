@@ -1,6 +1,7 @@
 import mujoco
 import numpy as np
 import math
+from scipy.spatial.transform import Rotation as R
 #自己的库
 import inital
 import my_math
@@ -213,8 +214,74 @@ def air_power_use_step(x,body_id):
     body_id,  # 物体ID
     x.data.qfrc_applied,  # 应用力的数组，这个参数是什么？额外力？
     )
+def _normalize(v, eps=1e-12):
+    n = np.linalg.norm(v)
+    return v if n < eps else v / n
+def check_wind_frame(R_bw, q_body_to_world_wxyz, v_body, q_wind_to_world_wxyz, verbose=True):
+    ok = True
+    msgs = []
 
+    # 0) 形状检查
+    if R_bw.shape != (3,3):
+        ok = False; msgs.append(f"R_bw shape invalid: {R_bw.shape}, expect (3,3)")
+        if verbose:
+            print("\n".join(msgs))
+        return ok
 
+    # 1) 正交性
+    orth_err = np.linalg.norm(R_bw.T @ R_bw - np.eye(3))
+    if orth_err > 1e-6:
+        ok = False; msgs.append(f"[X] R_bw not orthonormal, orth_err={orth_err:.2e}")
+    else:
+        msgs.append(f"[✓] R_bw orthonormal, orth_err={orth_err:.2e}")
+
+    # 2) 体->世
+    R_body_to_world = R.from_quat(np.roll(q_body_to_world_wxyz, -1)).as_matrix()  # wxyz -> xyzw
+
+    # 3) 由矩阵链推得 风->世
+    R_wind_to_world_by_mat = R_body_to_world @ R_bw
+
+    # 4) 由四元数给的 风->世
+    R_wind_to_world_by_quat = R.from_quat(np.roll(q_wind_to_world_wxyz, -1)).as_matrix()
+
+    # 5) 两者一致性
+    mat_diff = np.linalg.norm(R_wind_to_world_by_mat - R_wind_to_world_by_quat)
+    if mat_diff > 1e-5:
+        ok = False; msgs.append(f"[X] R_wind_to_world mismatch between matrix and quat, diff={mat_diff:.2e}")
+    else:
+        msgs.append(f"[✓] R_wind_to_world consistent, diff={mat_diff:.2e}")
+
+    # 6) 三轴正交与右手性
+    ex, ey, ez = R_bw[:,0], R_bw[:,1], R_bw[:,2]  # 风轴在体轴下的列向量
+    right_hand = np.linalg.norm(np.cross(ex, ey) - ez)
+    col_orth = np.linalg.norm(np.array([ex@ey, ex@ez, ey@ez]))
+    if right_hand > 1e-6 or col_orth > 1e-6:
+        ok = False; msgs.append(f"[X] Columns not right-handed orthonormal: right_err={right_hand:.2e}, col_orth={col_orth:.2e}")
+    else:
+        msgs.append(f"[✓] Right-handed orthonormal cols")
+
+    # 7) Xw 物理方向校验：应沿来流（-v）
+    v_world = R_body_to_world @ v_body
+    vhat_w = _normalize(v_world)
+    ex_world = R_wind_to_world_by_mat[:,0]
+    cosang = float(np.clip(ex_world @ (-vhat_w), -1.0, 1.0)) if np.linalg.norm(v_world)>1e-9 else np.nan
+    if np.isnan(cosang):
+        msgs.append("[•] |v|≈0: low-speed, skip Xw alignment check")
+    else:
+        if cosang < 0.995:  # 约< ~6°
+            ok = False; msgs.append(f"[X] Xw not aligned with -v_world: cos={cosang:.3f}")
+        else:
+            msgs.append(f"[✓] Xw aligned with -v_world: cos={cosang:.3f}")
+
+    # 8) 打印风轴在世界系方向
+    ex_w = R_wind_to_world_by_mat[:,0]
+    ey_w = R_wind_to_world_by_mat[:,1]
+    ez_w = R_wind_to_world_by_mat[:,2]
+    msgs.append(f"ex_w={ex_w.round(6)} ey_w={ey_w.round(6)} ez_w={ez_w.round(6)}")
+
+    if verbose:
+        print("\n".join(msgs))
+    return ok
 '''
 osc = debug.Oscilloscope(
     titles=["aoa", "soa", "D"],
@@ -228,12 +295,12 @@ def debug_step(x,body_id,time_stamp):
     osc.update()  # 非阻塞刷新
 '''
 def debug_step(x,body_id,time_stamp):
-    q_wind_to_world = pose_data.q_wind_to_global  # 你在别处更新的四元数 [w,x,y,z]
-    p_world = x.data.xipos[body_id]  # 质心世界坐标
-    body_id = 6
-    p_world = x.data.xipos[body_id]
-    q_wind_to_world = pose_data.q_wind_to_global  # 你已有的四元数（w,x,y,z）
-    debug.draw_axes_marker_viewer(x.viewer, pose_data.q_wind_to_global, p_world, 0.3)
+    ok = check_wind_frame(
+    R_bw=pose_data.R_wind_to_local,                 # 你的 R_bw
+    q_body_to_world_wxyz=x.data.xquat[body_id],     # MuJoCo 四元数
+    v_body=pose_data.v_local_mps,                                  # 体轴速度
+    q_wind_to_world_wxyz=pose_data.q_wind_to_global # 你的函数输出
+)
     return 0
 
 def step(x,time_stamp):
