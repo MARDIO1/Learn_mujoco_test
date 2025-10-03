@@ -5,7 +5,7 @@ import math
 import inital
 import my_math
 import my_parameter 
-
+import debug
 pose_data=my_parameter.Pose_data()
 missile_parameter = my_parameter.MissileParameter()
 power_data=my_parameter.Power_data()
@@ -131,11 +131,27 @@ def air_power_cal_step():
           missile_parameter.CL_de * delta_e + missile_parameter.CL_da * delta_a + missile_parameter.CL_dr * delta_r)
 
     # 阻力系数 CD
-    CD = (missile_parameter.CD0 + missile_parameter.CD_alpha * alpha + missile_parameter.CD_beta * beta +
+    '''CD = (missile_parameter.CD0 + missile_parameter.CD_alpha * alpha + missile_parameter.CD_beta * beta +
           missile_parameter.CD_q * (wy_local * L_ref / (2 * V)) +
           missile_parameter.CD_p * (wx_local * L_ref / (2 * V)) +
           missile_parameter.CD_r * (wz_local * L_ref / (2 * V)) +
           missile_parameter.CD_de * delta_e + missile_parameter.CD_da * delta_a + missile_parameter.CD_dr * delta_r)
+    '''
+    # 计算CD各项贡献（便于定位）
+    
+    CD0 = missile_parameter.CD0
+    CD_a = missile_parameter.CD_alpha * alpha
+    CD_b = missile_parameter.CD_beta  * beta
+    # 如需：CD_pq r 舵偏等分开打印
+    CD_raw = CD0 + CD_a + CD_b
+    # 可逐步恢复以下项，先注释调试
+    # CD_raw += missile_parameter.CD_q * (wy_local * L_ref / (2 * V))
+    # CD_raw += missile_parameter.CD_p * (wx_local * L_ref / (2 * V))
+    # CD_raw += missile_parameter.CD_r * (wz_local * L_ref / (2 * V))
+    # CD_raw += missile_parameter.CD_de * delta_e + missile_parameter.CD_da * delta_a + missile_parameter.CD_dr * delta_r
+    
+    CD = max(1e-6, CD_raw)  # 确保非负
+    
 
     # 侧向力系数 CY
     CY = (missile_parameter.CY0 + missile_parameter.CY_alpha * alpha + missile_parameter.CY_beta * beta +
@@ -167,14 +183,14 @@ def air_power_cal_step():
     D = 0.5 * rho * V_squared * S_ref * CD
     Y = 0.5 * rho * V_squared * S_ref * CY
     L = 0.5 * rho * V_squared * S_ref * CL
-    
+    print("攻角",alpha,"  侧滑角",beta,"  总阻力系数",CD,"  总阻力",D)
     # 力矩
     M = 0.5 * rho * V_squared * S_ref * L_ref * Cm      # 俯仰力矩
     Roll_Moment = 0.5 * rho * V_squared * S_ref * L_ref * Cl # 滚转力矩
     N = 0.5 * rho * V_squared * S_ref * L_ref * Cn      # 偏航力矩
     
     #风轴系中构造力（Xw沿气流方向：阻力D为正；Yw侧向；Zw升力）
-    F_wind = np.array([D, Y, L], dtype=np.float64)
+    F_wind = np.array([D, 0, 0], dtype=np.float64)
 
     #用弹体系速度定义风轴，得到风->体旋转矩阵
     v_body = np.array([vx_local, vy_local, vz_local], dtype=np.float64)
@@ -184,9 +200,14 @@ def air_power_cal_step():
     power_data.F_local = R_bw @ F_wind
     F_world = my_math.body_to_world(power_data.F_local, q_wb=pose_data.q_wb)
     power_data.F_global = F_world.tolist()
+
     #转化为世界系力矩
     power_data.M_local = np.array([Roll_Moment, M, N], dtype=np.float64)
     power_data.M_global = my_math.body_to_world(power_data.M_local, q_wb=pose_data.q_wb)
+    power_data.M_global=[0,0,0]
+
+
+    #print(f"V={V:.3f}, CD={CD:.4f}, D={D:.2f}, v_body={v_body}, F_body={power_data.F_local}, dot={np.dot(power_data.F_local, v_body):.3e}")
     return 0
 
 def air_power_use_step(x,body_id):
@@ -206,40 +227,30 @@ def air_power_use_step(x,body_id):
     x.data.qfrc_applied,  # 应用力的数组，这个参数是什么？额外力？
     )
 
-def debug_step(x,body_id):
-    '''# 每个body的空间加速度：[angacc(3), linacc(3)]，均在世界系
-    cacc = x.data.cacc.reshape(-1, 6)
 
-    angacc_world = cacc[body_id, 0:3]
-    linacc_world = cacc[body_id, 3:6]   # 这就是“包含重力”的世界线加速度 a_w
-
-    ares = np.zeros(6, dtype=np.float64)
-    mujoco.mj_objectAcceleration(x.model, x.data, mujoco.mjtObj.mjOBJ_BODY, body_id, ares,0)
-    angacc_world = ares[0:3]
-    linacc_world = ares[3:6]  # 含重力
-    print(f"body {body_id} 的世界线加速度: {linacc_world}")
-    print(f"body {body_id} 的世界角加速度: {angacc_world}")'''
+osc = debug.Oscilloscope(
+    titles=["aoa", "soa", "D"],
+    colors=["C0", "C1", "C2"],
+    time_window=10.0,  # 最近5秒滚动
+    ylabel="degree"
+    )
+def debug_step(x,body_id,time_stamp):
+    
+    vx, vy, vz = 10.0, 0.0, 0.0
+    osc.push(time_stamp*x.model.opt.timestep, [pose_data.aoa_degree, pose_data.soa_degree, power_data.F_wind[0]])
+    osc.update()  # 非阻塞刷新
     #看看哪个力不对劲
 
-def body_acc6_at_com(m, d, body_id, local=False):
-    # 确保 cacc 已刷新（你的环境里建议加这一句）
-    mujoco.mj_rnePostConstraint(m, d)
-
-    res = np.zeros(6, dtype=np.float64)
-    flg_local = 1 if local else 0  # 0=world, 1=local
-    mujoco.mj_objectAcceleration(m, d, mujoco.mjtObj.mjOBJ_BODY, body_id, res,1)
-    angacc = res[:3].copy()
-    linacc = res[3:].copy()
-    return angacc, linacc
-
-def step(x):
+def step(x,time_stamp):
     body_id = x.model.body("missile").id
     pose_get(x,body_id)
     air_power_cal_step()
-    debug_step(x,body_id)
     #body_acc6_at_com(x.model, x.data, body_id)
     #debug_acc(x.model, x.data, body_id)
     air_power_use_step(x,body_id)
+
+    debug_step(x,body_id,time_stamp)
+
     mujoco.mj_step(x.model, x.data)#模拟器运行
     x.viewer.sync()#画面显示
 

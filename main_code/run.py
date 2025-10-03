@@ -33,5 +33,5 @@ if __name__ == "__main__":
         time_stamp+=1
         #if time_stamp<1000:
         #    x.data.xfrc_applied[6, 2] = 10.0  # 1 N
-        main_step.step(x)
+        main_step.step(x,time_stamp)
 print("母鸡卡 结束！")

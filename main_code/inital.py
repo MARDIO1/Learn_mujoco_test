@@ -32,6 +32,7 @@ class Option:
         self.body_id={}
         self.joint_id={}
         self.motor_id={}
+        
     #显示画面大函数
     def launch_viewer(self):
         """启动 viewer 窗口"""
