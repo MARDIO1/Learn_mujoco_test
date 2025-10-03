@@ -86,11 +86,16 @@ class MissileParameter:
 class Pose_data:
     def __init__(self):
         #通常值
-        self.q_wb=[1.0,0.0,0.0,0.0]#获取的四元数
+        self.q_local_to_global=[1.0,0.0,0.0,0.0]#获取的四元数
+        self.q_wind_to_local=None
+        self.q_wind_to_global=None
+        self.R_local_to_wind=None
+        self.R_wind_to_local=None
+
         self.yaw_pitch_roll_rad=[0.0,0.0,0.0]
         self.yaw_pitch_roll_d=[0.0,0.0,0.0]
 
-        self.v_wind=0.0
+        self.v_wind_mps=0.0
         self.v_global_mps=[0.0,0.0,0.0]
         self.v_local_mps=[0.0,0.0,0.0]
         self.a_local_mps2=[0.0,0.0,0.0]

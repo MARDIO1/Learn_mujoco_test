@@ -35,8 +35,8 @@ def pose_get(x,body_id):
     w_local = x.data.body(body_id).cvel[0:3].copy()#1-3是体坐标系角速度
     v_local = x.data.body(body_id).cvel[3:6].copy()#3-6是线速度
     #v_local = my_math.quat_rotate_vector(q, v_global)
-    pose_data.w_wind = np.linalg.norm(v_local) # 计算速度向量的模
-    if pose_data.w_wind < 0.5:
+    pose_data.v_wind_mps = np.linalg.norm(v_local) # 计算速度向量的模
+    if pose_data.v_wind_mps < 0.5:
         aoa = 0.0  # 或 np.nan，取决于你的需求
         sideslip_angle = 0.0 # 或 np.nan
     else:
@@ -47,8 +47,14 @@ def pose_get(x,body_id):
         sideslip_angle_degrees = np.degrees(sideslip_angle)
         #print(aoa_degrees)
 
+    #构造风轴系,用弹体系速度定义风轴，得到风->体旋转矩阵
+    v_body = np.array(pose_data.v_local_mps, dtype=np.float64)
+    R_bw, _ = my_math._wind_axes_in_body(v_body) # 风轴系到弹体系的旋转矩阵
+
+    pose_data.R_wind_to_local = R_bw
+    pose_data.q_wind_to_global=my_math.q_wind_to_world(q, v_body)
     #pose_data.v_global_mps=
-    pose_data.q_wb=q
+    pose_data.q_local_to_global=q #mujoco提取姿态矩阵 世界->弹体
     pose_data.v_local_mps=v_local
     pose_data.a_local_mps2=x.data.body(body_id).cacc[3:6].copy()
     pose_data.b_local_radps2=x.data.body(body_id).cacc[0:3].copy()
@@ -68,23 +74,6 @@ def pose_get(x,body_id):
     return 0
 
 #逐帧计算空气动力
-'''
-注意飞行力学公式
-质心运动：
-F=ma
-旋转运动：
-M=Ib
-
-动力学公式：
-F_lip=
-F_slide=
-F_gravity=mg
-F_drag=
-
-各个方向力矩
-
-'''
-
 def air_power_cal_step():
     """
     计算导弹在空气动力作用下的力和力矩。
@@ -149,9 +138,7 @@ def air_power_cal_step():
     # CD_raw += missile_parameter.CD_p * (wx_local * L_ref / (2 * V))
     # CD_raw += missile_parameter.CD_r * (wz_local * L_ref / (2 * V))
     # CD_raw += missile_parameter.CD_de * delta_e + missile_parameter.CD_da * delta_a + missile_parameter.CD_dr * delta_r
-    
     CD = max(1e-6, CD_raw)  # 确保非负
-    
 
     # 侧向力系数 CY
     CY = (missile_parameter.CY0 + missile_parameter.CY_alpha * alpha + missile_parameter.CY_beta * beta +
@@ -183,7 +170,7 @@ def air_power_cal_step():
     D = 0.5 * rho * V_squared * S_ref * CD
     Y = 0.5 * rho * V_squared * S_ref * CY
     L = 0.5 * rho * V_squared * S_ref * CL
-    print("攻角",alpha,"  侧滑角",beta,"  总阻力系数",CD,"  总阻力",D)
+    
     # 力矩
     M = 0.5 * rho * V_squared * S_ref * L_ref * Cm      # 俯仰力矩
     Roll_Moment = 0.5 * rho * V_squared * S_ref * L_ref * Cl # 滚转力矩
@@ -191,23 +178,23 @@ def air_power_cal_step():
     
     #风轴系中构造力（Xw沿气流方向：阻力D为正；Yw侧向；Zw升力）
     F_wind = np.array([D, 0, 0], dtype=np.float64)
+    power_data.F_wind=F_wind
 
-    #用弹体系速度定义风轴，得到风->体旋转矩阵
-    v_body = np.array([vx_local, vy_local, vz_local], dtype=np.float64)
-    R_bw, _ = my_math._wind_axes_in_body(v_body) # 风轴系到弹体系的旋转矩阵
-
-    #转化为世界系力
-    power_data.F_local = R_bw @ F_wind
-    F_world = my_math.body_to_world(power_data.F_local, q_wb=pose_data.q_wb)
+    #风->体->世界 最终转化为世界系
+    power_data.F_local = pose_data.R_wind_to_local @ F_wind#中间件
+    F_world = my_math.body_to_world(power_data.F_local, q_wb=pose_data.q_local_to_global)
     power_data.F_global = F_world.tolist()
 
     #转化为世界系力矩
     power_data.M_local = np.array([Roll_Moment, M, N], dtype=np.float64)
-    power_data.M_global = my_math.body_to_world(power_data.M_local, q_wb=pose_data.q_wb)
+    power_data.M_global = my_math.body_to_world(power_data.M_local, q_wb=pose_data.q_local_to_global)
     power_data.M_global=[0,0,0]
 
-
+    print(F_wind)
     #print(f"V={V:.3f}, CD={CD:.4f}, D={D:.2f}, v_body={v_body}, F_body={power_data.F_local}, dot={np.dot(power_data.F_local, v_body):.3e}")
+    if pose_data.v_wind_mps<1:#低速风轴乱动最唐解决方案，更唐的是，这还没解决的了
+        power_data.M_global=[0,0,0]
+        power_data.F_global=[0,0,0]
     return 0
 
 def air_power_use_step(x,body_id):
@@ -228,6 +215,7 @@ def air_power_use_step(x,body_id):
     )
 
 
+'''
 osc = debug.Oscilloscope(
     titles=["aoa", "soa", "D"],
     colors=["C0", "C1", "C2"],
@@ -235,20 +223,24 @@ osc = debug.Oscilloscope(
     ylabel="degree"
     )
 def debug_step(x,body_id,time_stamp):
-    
-    vx, vy, vz = 10.0, 0.0, 0.0
-    osc.push(time_stamp*x.model.opt.timestep, [pose_data.aoa_degree, pose_data.soa_degree, power_data.F_wind[0]])
+    #osc.push(time_stamp*x.model.opt.timestep, [pose_data.aoa_degree, pose_data.soa_degree, power_data.F_wind[0]])
+    osc.push(time_stamp*x.model.opt.timestep, [power_data.F_wind[0], power_data.F_wind[1], power_data.F_wind[2]])
     osc.update()  # 非阻塞刷新
-    #看看哪个力不对劲
+'''
+def debug_step(x,body_id,time_stamp):
+    q_wind_to_world = pose_data.q_wind_to_global  # 你在别处更新的四元数 [w,x,y,z]
+    p_world = x.data.xipos[body_id]  # 质心世界坐标
+    body_id = 6
+    p_world = x.data.xipos[body_id]
+    q_wind_to_world = pose_data.q_wind_to_global  # 你已有的四元数（w,x,y,z）
+    debug.draw_axes_marker_viewer(x.viewer, pose_data.q_wind_to_global, p_world, 0.3)
+    return 0
 
 def step(x,time_stamp):
     body_id = x.model.body("missile").id
     pose_get(x,body_id)
     air_power_cal_step()
-    #body_acc6_at_com(x.model, x.data, body_id)
-    #debug_acc(x.model, x.data, body_id)
     air_power_use_step(x,body_id)
-
     debug_step(x,body_id,time_stamp)
 
     mujoco.mj_step(x.model, x.data)#模拟器运行

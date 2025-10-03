@@ -159,7 +159,7 @@ def wind_to_world(vec_wind, q_wb=None, R_wb=None, v_body=None):
         raise ValueError("wind_to_world: 需要 q_wb 或 R_wb")
 
 
-# 4) 迎角 / 侧滑角（通过四元数把速度转到弹体）
+'''# 4) 迎角 / 侧滑角（通过四元数把速度转到弹体）
 def alpha_beta_from_world_vel(v_world, q_wb):
     """
     从世界速度 + 姿态四元数，计算弹体系的迎角alpha与侧滑beta（弧度）。
@@ -175,7 +175,7 @@ def alpha_beta_from_world_vel(v_world, q_wb):
         return 0.0, 0.0
     alpha = np.arctan2(vz, vx)
     beta  = np.arctan2(vy, vx)
-    return float(alpha), float(beta)
+    return float(alpha), float(beta)'''
 
 def alpha_beta_from_body_vel(v_body):
     """
@@ -189,3 +189,46 @@ def alpha_beta_from_body_vel(v_body):
     alpha = np.arctan2(vz, vx)
     beta  = np.arctan2(vy, vx)
     return float(alpha), float(beta)
+
+def q_body_to_wind(v_body):
+    """
+    由弹体坐标下的速度 v_body 构造 体->风轴 的四元数（MuJoCo格式 [w,x,y,z]）
+    - 先用 _wind_axes_in_body 得到 R_bw（风->体）
+    - 再取转置得到 R_wb（体->风）
+    - 转成四元数并归一化
+    """
+    R_bw, _ = _wind_axes_in_body(np.asarray(v_body, dtype=np.float64))  # wind->body
+    R_wb = R_bw.T                                                        # body->wind
+    # SciPy: 先矩阵->四元数[x,y,z,w]，再回到MuJoCo[w,x,y,z]
+    q_xyzw = R.from_matrix(R_wb).as_quat()
+    q_wxyz = np.array([q_xyzw[3], q_xyzw[0], q_xyzw[1], q_xyzw[2]], dtype=np.float64)
+    return normalize_quat(q_wxyz)
+
+
+def q_wind_to_world(q_wb, v_body):
+    """
+    由 body->world 的四元数 q_wb（MuJoCo格式）与 v_body（体坐标速度）计算 风->世界 的四元数（MuJoCo格式）。
+    关系：q_wind_to_world = q_body_to_world ∘ q_wind_to_body
+         = q_wb ∘ (q_body_to_wind)^(-1)
+    注意：四元数复合使用 [w,x,y,z] 格式，结果再归一化。
+    """
+    # q_body_to_wind
+    q_bw = q_body_to_wind(v_body)  # body->wind
+    # 取其逆：wind->body（共轭即可，因为单位四元数）
+    q_wbdy = np.array([ q_bw[0], -q_bw[1], -q_bw[2], -q_bw[3] ], dtype=np.float64)  # wind->body
+
+    # 体->世界 已给：q_wb（body->world）
+    q_b2w = normalize_quat(np.asarray(q_wb, dtype=np.float64))  # body->world
+
+    # 复合：wind->world = (body->world) ∘ (wind->body)
+    # 四元数乘法（MuJoCo格式 w,x,y,z）
+    w1,x1,y1,z1 = q_b2w
+    w2,x2,y2,z2 = q_wbdy
+    q_ww = np.array([
+        w1*w2 - x1*x2 - y1*y2 - z1*z2,
+        w1*x2 + x1*w2 + y1*z2 - z1*y2,
+        w1*y2 - x1*z2 + y1*w2 + z1*x2,
+        w1*z2 + x1*y2 - y1*x2 + z1*w2
+    ], dtype=np.float64)
+
+    return normalize_quat(q_ww)

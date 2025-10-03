@@ -2,6 +2,7 @@ import mujoco
 import mujoco.viewer
 import os
 import numpy as np
+import debug
 #各项参数用来快速调整
 xml_file_path=r'..\mode\all.xml'
 
@@ -26,6 +27,7 @@ class Option:
         #xml文件参数#一些大接口参数
         self.mjcf_file_path = os.path.join(os.path.dirname(__file__), path)
         self.model = mujoco.MjModel.from_xml_path(self.mjcf_file_path)
+        #self.scn = self.scene = mujoco.MjvScene(self.model, maxgeom=10000)
         self.data = mujoco.MjData(self.model)
         self.viewer = None  # 修改为 self.viewer = None
         #一些自定义小接口参数
@@ -84,6 +86,9 @@ class Option:
             if motor_name:  # 确保 body 有名称 (有些 body 可能没有名称)
                 self.motor_id[motor_name] = i  # 将名称和 ID 添加到字典中
             print(i," ",motor_name)
+    
+    def render_overlay(model, data, scn):
+        body_id = 6
         return 0
         
 def inital():
@@ -97,6 +102,7 @@ def inital():
     print("模型和类初始化 胜利！")
     x.launch_viewer()
     print("free camera 初始化 胜利！")
+    
     return x
 
 if __name__ == "__main__":

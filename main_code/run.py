@@ -20,6 +20,7 @@ def temp_start(x):
     x.data.qvel[x.joint_id['missile_main_joint']['qvel_adr']+2]=vz
     return 0
 
+
 #如此完美的模块化设计，什么叫可读性？！什么叫可维护性？！
 if __name__ == "__main__":
     #初始化
@@ -29,6 +30,7 @@ if __name__ == "__main__":
     #持续运行
     time_stamp=0
     while x.viewer.is_running():
+        
         time.sleep(0.01)
         time_stamp+=1
         #if time_stamp<1000:
