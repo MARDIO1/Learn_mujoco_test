@@ -1,17 +1,14 @@
 import mujoco
 import numpy as np
 import math
-from scipy.spatial.transform import Rotation as R
-
+import rerun as rr
 # 自己的库
-import inital
 import my_math
 import my_parameter
-import debug
 
-pose_data = my_parameter.Pose_data()
+pose_data = my_parameter.PoseData()
 missile_parameter = my_parameter.MissileParameter()
-power_data = my_parameter.Power_data()
+power_data = my_parameter.PowerData()
 
 
 def pose_get(x, body_id):
@@ -289,6 +286,10 @@ def debug_step(x, body_id, time_stamp):
     print("总共外加力", "\n", x.data.qfrc_applied)
     print("\n")
 
+def rr_debug_step(x, body_id, time_stamp):
+    rr.set_time("time_stamp", sequence=time_stamp)
+    rr.log("AOA", rr.Scalars(pose_data.aoa_degree))
+    rr.log("SOA", rr.Scalars(pose_data.soa_degree))
 
 def step(x, time_stamp):
     body_id = x.model.body("missile").id
@@ -296,9 +297,9 @@ def step(x, time_stamp):
     air_power_cal_step()
     air_power_use_step(x, body_id)
     debug_step(x, body_id, time_stamp)
-
+    rr_debug_step(x, body_id, time_stamp)
     mujoco.mj_step(x.model, x.data)  # 模拟器运行
-    x.viewer.sync()  # 画面显示
+    x.viewer.sync()  # 更新画面显示
 
 
 if __name__ == "__main__":

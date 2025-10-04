@@ -39,6 +39,7 @@ class MissileParameter:
         # 飞行器结构参数 (Aircraft Structural Parameters)
         self.S_ref = 0.005  # 参考面积 (Reference Area) - 例如：弹翼总面积
         self.L_ref = 0.2  # 参考长度 (Reference Length) - 例如：弹体长度
+
         # 惯性参数 (Inertial Parameters)
         self.m = 1.0  # 飞行器质量 (Aircraft Mass)
         self.Ix = 0.0042  # 绕 x 轴转动惯量 (Moment of Inertia about x-axis)
@@ -122,7 +123,7 @@ class MissileParameter:
 
 
 # 位姿参数
-class Pose_data:
+class PoseData:
     def __init__(self):
         # 通常值
         self.q_local_to_global = [1.0, 0.0, 0.0, 0.0]  # 获取的四元数
@@ -176,7 +177,7 @@ class Pose_data:
         # print(f"soadot_radps: {self.soadot_radps}")
 
 
-class Power_data:
+class PowerData:
     def __init__(self):
         # 因此，本体参考系下的力分量为:
         # Fx = -D

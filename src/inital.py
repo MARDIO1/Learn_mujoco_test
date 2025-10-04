@@ -1,16 +1,14 @@
 import mujoco
 import mujoco.viewer
 import os
-import numpy as np
-import debug
-
+import rerun as rr
 # 各项参数用来快速调整
-xml_file_path = r"..\models\all.xml"
+xml_file_path = r"..\\models\\all.xml"
 
 
 # 乱七八糟的辅助函数
 # 第一个就难绷完了，为什么新版本还把自由度数量删了，还要自己用type推断？而且为什么只有这么几种自由度？就没有2,4吗
-def get_dof_count(model, joint_id):
+def get_dof_count(model, joint_id) -> int:
     """根据关节类型返回其在qvel中的自由度数量。"""
     joint_type = model.jnt_type[joint_id]
     if joint_type == mujoco.mjtJoint.mjJNT_FREE:
@@ -30,7 +28,7 @@ def get_dof_count(model, joint_id):
 
 
 # 封装了一个超级重要的类
-class Option:
+class MujocoHandler:
     def __init__(self, path):
         # xml文件参数#一些大接口参数
         self.mjcf_file_path = os.path.join(os.path.dirname(__file__), path)
@@ -70,7 +68,6 @@ class Option:
             if body_name:  # 确保 body 有名称 (有些 body 可能没有名称)
                 self.body_id[body_name] = i  # 将名称和 ID 添加到字典中
             print(i, " ", body_name)
-        return 0
 
     # 关节对应索引，自由度二维数组，构造函数的一部分
     def get_all_joint_ids(self):
@@ -105,23 +102,27 @@ class Option:
             print(i, " ", motor_name)
 
     def render_overlay(model, data, scn):
-        body_id = 6
         return 0
 
+def rr_inital():
+    #高级示波器
+    rr.init("rerun_example_scalar_row_updates", spawn=True)
+    rr.log("AOA", rr.SeriesLines(colors=[125, 0, 0], names="sin(0.01t)", widths=4), static=True)
+    rr.log("SOA", rr.SeriesLines(colors=[0, 125, 125], names="cos(0.01t)", widths=4), static=True)
 
-def inital() -> Option:
+def inital() -> MujocoHandler:
     # 加载文件，初始化
     print("母鸡卡 启动！")
-    x = Option(xml_file_path)
-    x.get_all_body_ids()
-    x.get_all_joint_ids()
-    x.get_all_motors_ids()
-
+    rr_inital()
+    mujoco_handler = MujocoHandler(xml_file_path)
+    mujoco_handler.get_all_body_ids()
+    mujoco_handler.get_all_joint_ids()
+    mujoco_handler.get_all_motors_ids()
     print("模型和类初始化 胜利！")
-    x.launch_viewer()
+    mujoco_handler.launch_viewer()
     print("free camera 初始化 胜利！")
 
-    return x
+    return mujoco_handler
 
 
 if __name__ == "__main__":

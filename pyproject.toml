@@ -1,5 +1,5 @@
 [project]
-name = "mujocu"
+name = "mujoco_missile"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -7,5 +7,6 @@ requires-python = ">=3.13"
 dependencies = [
     "matplotlib>=3.10.6",
     "mujoco>=3.3.6",
+    "rerun-sdk>=0.25.1",
     "scipy>=1.16.2",
 ]
