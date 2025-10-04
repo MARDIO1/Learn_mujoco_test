@@ -17,6 +17,7 @@ m = mujoco.MjModel.from_xml_string(xml)
 d = mujoco.MjData(m)
 bid = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, "box")
 
+
 def read_objacc(tag):
     # 确保派生量初始化
     mujoco.mj_forward(m, d)
@@ -32,7 +33,7 @@ def read_objacc(tag):
     linacc_b = ares[3:6].copy()
 
     # 从姿态矩阵把世界系旋到机体系，做个交叉验证
-    R_bw = d.xmat[bid].reshape(3,3)  # body->world
+    R_bw = d.xmat[bid].reshape(3, 3)  # body->world
     R_wb = R_bw.T
     linacc_b_from_w = R_wb @ linacc_w
 
@@ -41,14 +42,15 @@ def read_objacc(tag):
     print("  linacc_b_obj       :", linacc_b)
     print("  linacc_b_from_w    :", linacc_b_from_w)
 
+
 # 初值读取
 read_objacc("init")
 
 # 有限差分（兜底对照）
 vz_prev, t_prev = d.qvel[2], d.time
 for i in range(5):
-    mujoco.mj_step(m, d)      # 正常推进一步
-    read_objacc(f"step {i+1}")
+    mujoco.mj_step(m, d)  # 正常推进一步
+    read_objacc(f"step {i + 1}")
 
     dt = d.time - t_prev
     a_fd_z = (d.qvel[2] - vz_prev) / dt if dt > 0 else np.nan

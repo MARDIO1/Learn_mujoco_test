@@ -3,9 +3,19 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import deque
-#示波器部分
+
+
+# 示波器部分
 class Oscilloscope:
-    def __init__(self, titles, colors=None, max_points=1000, time_window=None, ylabel="", xlabel="time (s)"):
+    def __init__(
+        self,
+        titles,
+        colors=None,
+        max_points=1000,
+        time_window=None,
+        ylabel="",
+        xlabel="time (s)",
+    ):
         """
         titles:  每条曲线名称列表，例如 ["vx","vy","vz"]
         colors:  每条曲线颜色，可选，如 ["C0","C1","C2"]
@@ -28,7 +38,9 @@ class Oscilloscope:
         if colors is None:
             colors = [f"C{i}" for i in range(self.n)]
         for i in range(self.n):
-            line, = self.ax.plot([], [], color=colors[i], label=titles[i], linewidth=1.4)
+            (line,) = self.ax.plot(
+                [], [], color=colors[i], label=titles[i], linewidth=1.4
+            )
             self.lines.append(line)
 
         self.ax.set_xlabel(xlabel)

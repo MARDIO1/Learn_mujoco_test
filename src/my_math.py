@@ -1,20 +1,31 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
+
 # 你已有的工具
 def normalize_quat(q):
-    """ 四元数归一化（关键步骤） """
+    """四元数归一化（关键步骤）"""
     return q / np.linalg.norm(q)
 
+
 def quat_rotate_vector(q, v):
-    """ 四元数旋转向量（不依赖欧拉角），q = [w, x, y, z]（MuJoCo格式） """
+    """四元数旋转向量（不依赖欧拉角），q = [w, x, y, z]（MuJoCo格式）"""
     w, x, y, z = q
     vx, vy, vz = v
-    return np.array([
-        (1 - 2*y**2 - 2*z**2)*vx + 2*(x*y - w*z)*vy + 2*(x*z + w*y)*vz,  # X
-        2*(x*y + w*z)*vx + (1 - 2*x**2 - 2*z**2)*vy + 2*(y*z - w*x)*vz,  # Y
-        2*(x*z - w*y)*vx + 2*(y*z + w*x)*vy + (1 - 2*x**2 - 2*y**2)*vz   # Z
-    ])
+    return np.array(
+        [
+            (1 - 2 * y**2 - 2 * z**2) * vx
+            + 2 * (x * y - w * z) * vy
+            + 2 * (x * z + w * y) * vz,  # X
+            2 * (x * y + w * z) * vx
+            + (1 - 2 * x**2 - 2 * z**2) * vy
+            + 2 * (y * z - w * x) * vz,  # Y
+            2 * (x * z - w * y) * vx
+            + 2 * (y * z + w * x) * vy
+            + (1 - 2 * x**2 - 2 * y**2) * vz,  # Z
+        ]
+    )
+
 
 def get_euler_angles(q):
     """
@@ -23,7 +34,7 @@ def get_euler_angles(q):
     """
     scipy_q = np.roll(q, shift=-1)
     rotation = R.from_quat(scipy_q)
-    euler_angles = rotation.as_euler('XYZ', degrees=True)
+    euler_angles = rotation.as_euler("XYZ", degrees=True)
     return euler_angles
 
 
@@ -53,9 +64,10 @@ def world_to_body(vec_world, q_wb=None, R_wb=None):
         # world->body 是逆旋转
         return rot.inv().apply(v)
     elif R_wb is not None:
-        return (np.asarray(R_wb, dtype=np.float64).T @ v)
+        return np.asarray(R_wb, dtype=np.float64).T @ v
     else:
         raise ValueError("world_to_body: 需要提供 q_wb 或 R_wb")
+
 
 def body_to_world(vec_body, q_wb=None, R_wb=None):
     """
@@ -69,7 +81,7 @@ def body_to_world(vec_body, q_wb=None, R_wb=None):
         rot = rot_from_mj_quat(q_wb)
         return rot.apply(v)
     elif R_wb is not None:
-        return (np.asarray(R_wb, dtype=np.float64) @ v)
+        return np.asarray(R_wb, dtype=np.float64) @ v
     else:
         raise ValueError("body_to_world: 需要提供 q_wb 或 R_wb")
 
@@ -116,6 +128,7 @@ def _wind_axes_in_body(v_body):
     R_bw = np.column_stack((eXw, eYw, eZw))
     return R_bw, (eXw, eYw, eZw)
 
+
 def body_to_wind(vec_body, v_body):
     """
     弹体 -> 风轴
@@ -129,6 +142,7 @@ def body_to_wind(vec_body, v_body):
     R_bw, _ = _wind_axes_in_body(v_body)
     R_wb = R_bw.T  # body->wind
     return R_wb @ v
+
 
 def wind_to_body(vec_wind, v_body):
     """
@@ -177,6 +191,7 @@ def alpha_beta_from_world_vel(v_world, q_wb):
     beta  = np.arctan2(vy, vx)
     return float(alpha), float(beta)'''
 
+
 def alpha_beta_from_body_vel(v_body):
     """
     已知弹体系速度时直接计算迎角/侧滑角（弧度）。
@@ -187,8 +202,9 @@ def alpha_beta_from_body_vel(v_body):
     if V < 1e-6:
         return 0.0, 0.0
     alpha = np.arctan2(vz, vx)
-    beta  = np.arctan2(vy, vx)
+    beta = np.arctan2(vy, vx)
     return float(alpha), float(beta)
+
 
 def q_body_to_wind(v_body):
     """
@@ -198,7 +214,7 @@ def q_body_to_wind(v_body):
     - 转成四元数并归一化
     """
     R_bw, _ = _wind_axes_in_body(np.asarray(v_body, dtype=np.float64))  # wind->body
-    R_wb = R_bw.T                                                        # body->wind
+    R_wb = R_bw.T  # body->wind
     # SciPy: 先矩阵->四元数[x,y,z,w]，再回到MuJoCo[w,x,y,z]
     q_xyzw = R.from_matrix(R_wb).as_quat()
     q_wxyz = np.array([q_xyzw[3], q_xyzw[0], q_xyzw[1], q_xyzw[2]], dtype=np.float64)
@@ -215,20 +231,25 @@ def q_wind_to_world(q_wb, v_body):
     # q_body_to_wind
     q_bw = q_body_to_wind(v_body)  # body->wind
     # 取其逆：wind->body（共轭即可，因为单位四元数）
-    q_wbdy = np.array([ q_bw[0], -q_bw[1], -q_bw[2], -q_bw[3] ], dtype=np.float64)  # wind->body
+    q_wbdy = np.array(
+        [q_bw[0], -q_bw[1], -q_bw[2], -q_bw[3]], dtype=np.float64
+    )  # wind->body
 
     # 体->世界 已给：q_wb（body->world）
     q_b2w = normalize_quat(np.asarray(q_wb, dtype=np.float64))  # body->world
 
     # 复合：wind->world = (body->world) ∘ (wind->body)
     # 四元数乘法（MuJoCo格式 w,x,y,z）
-    w1,x1,y1,z1 = q_b2w
-    w2,x2,y2,z2 = q_wbdy
-    q_ww = np.array([
-        w1*w2 - x1*x2 - y1*y2 - z1*z2,
-        w1*x2 + x1*w2 + y1*z2 - z1*y2,
-        w1*y2 - x1*z2 + y1*w2 + z1*x2,
-        w1*z2 + x1*y2 - y1*x2 + z1*w2
-    ], dtype=np.float64)
+    w1, x1, y1, z1 = q_b2w
+    w2, x2, y2, z2 = q_wbdy
+    q_ww = np.array(
+        [
+            w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2,
+            w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
+            w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2,
+            w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2,
+        ],
+        dtype=np.float64,
+    )
 
     return normalize_quat(q_ww)
