@@ -301,6 +301,5 @@ def step(x, time_stamp):
     mujoco.mj_step(x.model, x.data)  # 模拟器运行
     x.viewer.sync()  # 更新画面显示
 
-
 if __name__ == "__main__":
     pass

@@ -8,4 +8,7 @@
     
     <!-- 包含飞镖模型 -->
     <include file="missile.xml"/>
+
+    <!-- 包含麻烦的模型 -->
+    <include file="try2.SLDASM/urdf/try2.SLDASM.mjcf"/>
 </mujoco>

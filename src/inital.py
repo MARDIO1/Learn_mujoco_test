@@ -4,7 +4,7 @@ import os
 import rerun as rr
 # 各项参数用来快速调整
 xml_file_path = r"..\\models\\all.xml"
-
+urdf_file_path= "..\\models\\try2.SLDASM\\urdf\\try2.SLDASM.urdf"
 
 # 乱七八糟的辅助函数
 # 第一个就难绷完了，为什么新版本还把自由度数量删了，还要自己用type推断？而且为什么只有这么几种自由度？就没有2,4吗
@@ -111,6 +111,8 @@ def rr_inital():
     rr.log("SOA", rr.SeriesLines(colors=[0, 125, 125], names="cos(0.01t)", widths=4), static=True)
 
 def inital() -> MujocoHandler:
+    #urdf文件
+
     # 加载文件，初始化
     print("母鸡卡 启动！")
     rr_inital()
